@@ -1,15 +1,18 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE LambdaCase #-}
 
 module IrcParser
     ( IrcMessage(..)
+    , IrcCommand(..)
     , readMessage
-    , showMessage
+    , showCommand
     ) where
 
 import Control.Applicative
 import Data.ByteString.Char8 as B
 import Data.Attoparsec.ByteString.Char8 as P
 import Data.Char (toUpper)
+import Text.Printf
 
 newtype IrcOrigin = IrcOrigin ByteString deriving (Show, Eq)
 
@@ -26,8 +29,15 @@ data IrcCommand
 readMessage :: ByteString -> Either String IrcMessage
 readMessage msg = parseOnly parseMessage msg
 
-showMessage :: IrcMessage -> ByteString
-showMessage _ = "abc"
+showCommand :: IrcCommand -> ByteString
+showCommand = \case
+  PingCommand t -> c ["PING :", t]
+  PongCommand t -> c ["PONG :", t]
+  StringCommand  name args -> c $ name                          : colonizeArgs args
+  NumericCommand name args -> c $ (B.pack $ printf "%03i" name) : colonizeArgs args
+  where
+    c = B.concat
+    colonizeArgs xs = if Prelude.null xs then [] else Prelude.init xs ++ [append ":" $ Prelude.last xs]
 
 parseMessage :: Parser IrcMessage
 parseMessage =

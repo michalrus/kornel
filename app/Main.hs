@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE LambdaCase #-}
 
 module Main where
 
@@ -10,7 +11,7 @@ import Options.Applicative
 import qualified Data.ByteString.Char8 as B
 import Network.Connection
 import Network.Socket
-import qualified IrcParser
+import qualified IrcParser as I
 
 data Config = Config
               { serverHost :: HostName
@@ -56,6 +57,7 @@ login cfg ctx = do
                             , connectionUseSecure = Nothing
                             , connectionUseSocks  = Nothing
                             }
+  -- FIXME: use sendCommand
   connectionPut con $ B.pack $
     "NICK " ++ (nick cfg) ++ "\r\n" ++
     "USER " ++ (nick cfg) ++ " - - :" ++ realName ++ "\r\n" ++
@@ -65,8 +67,24 @@ login cfg ctx = do
 processLine :: Connection -> IO ()
 processLine con = do
   raw <- trimCR <$> connectionGetLine 512 con
-  case IrcParser.readMessage raw of
+  case I.readMessage raw of
     Left  err -> hPutStrLn stderr $ "Failed to parse message ‘" ++ show raw ++ "’ with ‘" ++ show err ++ "’"
-    Right ok  -> putStrLn $ show ok
+    Right ok  -> do
+      response <- processMsg ok
+      case response of
+        Nothing -> return ()
+        Just r -> sendCommand con r
   where
-    trimCR ln = if B.last ln == '\r' then B.init ln else ln
+    trimCR ln = if not $ B.null ln && B.last ln == '\r' then B.init ln else ln
+
+sendCommand :: Connection -> I.IrcCommand -> IO ()
+sendCommand con cmd = do
+  putStrLn $ "-> " ++ show cmd
+  connectionPut con $ B.append (I.showCommand cmd) "\r\n"
+
+processMsg :: I.IrcMessage -> IO (Maybe I.IrcCommand)
+processMsg (I.IrcMessage origin msg) = do
+  putStrLn $ "<- " ++ show origin ++ " - " ++ show msg
+  case msg of
+    I.PingCommand t -> return . Just $ I.PongCommand t
+    _ -> return Nothing
