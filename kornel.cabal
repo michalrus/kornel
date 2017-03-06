@@ -15,8 +15,11 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Lib
+  exposed-modules:     IrcParser
   build-depends:       base >= 4.7 && < 5
+                     , bytestring
+                     , attoparsec
+  ghc-options:         -Wall -Werror -threaded -rtsopts -with-rtsopts=-N
   default-language:    Haskell2010
 
 executable kornel-exe
@@ -38,7 +41,7 @@ test-suite kornel-test
   main-is:             Spec.hs
   build-depends:       base
                      , kornel
-  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+  ghc-options:         -Wall -Werror -threaded -rtsopts -with-rtsopts=-N
   default-language:    Haskell2010
 
 source-repository head
