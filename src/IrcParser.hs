@@ -2,8 +2,9 @@
 {-# LANGUAGE LambdaCase #-}
 
 module IrcParser
-       ( IrcMessage(..)
+       ( IrcLine(..)
        , IrcCommand(..)
+       , Hostmask(..)
        , readMessage
        , showCommand
        ) where
@@ -11,49 +12,60 @@ module IrcParser
 import Control.Applicative
 import Data.Text as Text
 import Data.Attoparsec.Text as P
-import Data.Char (isSpace)
 import Text.Printf (printf)
 
-newtype IrcOrigin = IrcOrigin Text deriving (Show, Eq)
+data Hostmask = Hostmask
+                 { nick :: Text
+                 , hostmask :: Maybe Text
+                 , host :: Maybe Text
+                 }
+               deriving (Show, Eq)
 
-data IrcMessage = IrcMessage (Maybe IrcOrigin) IrcCommand
+data IrcLine = IrcLine (Maybe Hostmask) IrcCommand
   deriving (Show, Eq)
 
 data IrcCommand
-  = PingCommand Text
-  | PongCommand Text
-  | NickCommand Text
-  | UserCommand Text Text Text Text
-  | JoinCommand [Text]
-  | NoticeCommand Text Text
-  | PrivmsgCommand Text Text
+  = Ping Text
+  | Pong Text
+  | Nick Text
+  | User Text Text Text Text
+  | Join [Text]
+  | Notice Text Text
+  | Privmsg Text Text
   | StringCommand Text [Text]
   | NumericCommand Integer [Text]
   deriving (Show, Eq)
 
-readMessage :: Text -> Either String IrcMessage
+readMessage :: Text -> Either String IrcLine
 readMessage msg = parseOnly parseMessage msg
 
 showCommand :: IrcCommand -> Text
 showCommand = \case
-  PingCommand t             -> c ["PING :", t]
-  PongCommand t             -> c ["PONG :", t]
-  NickCommand n             -> c ["NICK ", n]
-  UserCommand user a b real -> c ["USER ", user, " ", a, " ", b, " :", real]
-  JoinCommand chs           -> c ["JOIN ", intercalate "," chs]
-  NoticeCommand t m         -> c ["NOTICE ", t, " :", m]
-  PrivmsgCommand t m        -> c ["PRIVMSG ", t, " :", m]
-  StringCommand  name args  -> c $ name                        : colonizeArgs args
-  NumericCommand name args  -> c $ (pack $ printf "%03i" name) : colonizeArgs args
+  Ping t             -> c ["PING :", t]
+  Pong t             -> c ["PONG :", t]
+  Nick n             -> c ["NICK ", n]
+  User user a b real -> c ["USER ", user, " ", a, " ", b, " :", real]
+  Join chs           -> c ["JOIN ", intercalate "," chs]
+  Notice t m         -> c ["NOTICE ", t, " :", m]
+  Privmsg t m        -> c ["PRIVMSG ", t, " :", m]
+  StringCommand  name args -> c $ name                        : colonizeArgs args
+  NumericCommand name args -> c $ (pack $ printf "%03i" name) : colonizeArgs args
   where
     c = Text.concat
     colonizeArgs xs = if Prelude.null xs then [] else Prelude.init xs ++ [append ":" $ Prelude.last xs]
 
-parseMessage :: Parser IrcMessage
+parseMessage :: Parser IrcLine
 parseMessage =
-  IrcMessage <$> option Nothing (Just <$> parseOrigin) <*> parseCommand
+  IrcLine <$> option Nothing (Just <$> (skipMany space *> char ':' *> parseHostmask))
+          <*> parseCommand
+
+parseHostmask :: Parser Hostmask
+parseHostmask = full <|> nickOnly
   where
-    parseOrigin = skipMany space *> char ':' *> (IrcOrigin <$> (P.takeWhile $ not . isWhitespace))
+    full     = Hostmask <$> (P.takeTill $ \c -> isWhitespace c || c == '!') <* char '!'
+                        <*> (Just <$> (P.takeTill $ \c -> isWhitespace c || c == '@')) <* char '@'
+                        <*> (Just <$> (P.takeTill isWhitespace))
+    nickOnly = Hostmask <$> P.takeTill isWhitespace <*> pure Nothing <*> pure Nothing
 
 parseCommand :: Parser IrcCommand
 parseCommand =
@@ -61,7 +73,7 @@ parseCommand =
   where
     argument :: Parser Text
     argument = skipMany1 space *> (lastOne <|> (takeWhile1 $ not . isWhitespace))
-      where lastOne = char ':' *> (P.takeWhile $ not . isEOL)
+      where lastOne = char ':' *> (P.takeTill isEndOfLine)
 
     numericCmd :: Parser IrcCommand
     numericCmd = NumericCommand <$> decimal <*> many argument
@@ -70,17 +82,14 @@ parseCommand =
     stringCmd = do
       cmd <- (takeWhile1 $ inClass "A-Za-z0-9_")
       case cmd of
-        "PING"    -> PingCommand    <$> argument
-        "PONG"    -> PongCommand    <$> argument
-        "NICK"    -> NickCommand    <$> argument
-        "USER"    -> UserCommand    <$> argument <*> argument <*> argument <*> argument
-        "JOIN"    -> JoinCommand    <$> splitOn "," <$> argument
-        "NOTICE"  -> NoticeCommand  <$> argument <*> argument
-        "PRIVMSG" -> PrivmsgCommand <$> argument <*> argument
+        "PING"    -> Ping    <$> argument
+        "PONG"    -> Pong    <$> argument
+        "NICK"    -> Nick    <$> argument
+        "USER"    -> User    <$> argument <*> argument <*> argument <*> argument
+        "JOIN"    -> Join    <$> splitOn "," <$> argument
+        "NOTICE"  -> Notice  <$> argument <*> argument
+        "PRIVMSG" -> Privmsg <$> argument <*> argument
         _         -> StringCommand cmd <$> many argument
 
 isWhitespace :: Char -> Bool
-isWhitespace c = isSpace c || isEOL c || c == '\t'
-
-isEOL :: Char -> Bool
-isEOL c = c == '\n' || c == '\r'
+isWhitespace c = isHorizontalSpace c || isEndOfLine c

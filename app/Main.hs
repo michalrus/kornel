@@ -6,7 +6,7 @@ module Main where
 import System.IO
 import System.IO.Error
 import Control.Monad
-import Data.Text
+import Data.Text as Text -- bug in Intero?
 import Data.Text.Encoding (decodeUtf8With, encodeUtf8)
 import Network.Connection
 import qualified IrcParser as I
@@ -19,7 +19,7 @@ runConfig :: Config -> IO ()
 runConfig cfg = do
   ctx <- initConnectionContext
   con <- login cfg ctx
-  catchIOError (forever $ processLine con)
+  catchIOError (forever $ processLine cfg con)
     (\e -> if isEOFError e then return () else ioError e)
 
 login :: CLI.Config -> ConnectionContext -> IO Connection
@@ -31,37 +31,40 @@ login cfg ctx = do
                             , connectionUseSocks  = Nothing
                             }
   mapM_ (sendCommand con)
-    [ I.NickCommand $ nick cfg
-    , I.UserCommand (nick cfg) "-" "-" "https://github.com/michalrus/kornel"
-    , I.JoinCommand [channel cfg]
+    [ I.Nick $ nick cfg
+    , I.User (nick cfg) "-" "-" "https://github.com/michalrus/kornel"
+    , I.Join [channel cfg]
     ]
   return con
 
-processLine :: Connection -> IO ()
-processLine con = do
-  raw <- dropWhileEnd isCRLF <$> (decodeUtf8With $ \_ _ -> Just '_') <$> connectionGetLine 512 con
+processLine :: Config -> Connection -> IO ()
+processLine cfg con = do
+  raw <- dropWhileEnd isEndOfLine <$> (decodeUtf8With $ \_ _ -> Just '_') <$> connectionGetLine 512 con
   case I.readMessage raw of
     Left  err -> hPutStrLn stderr $ "Failed to parse message ‘" ++ show raw ++ "’ with ‘" ++ show err ++ "’"
     Right ok  -> do
-      response <- processMsg ok
+      response <- processMsg cfg ok
       case response of
         Nothing -> return ()
         Just r -> sendCommand con r
   where
-    isCRLF c = c == '\r' || c == '\n'
+    isEndOfLine c = c == '\r' || c == '\n'
 
 sendCommand :: Connection -> I.IrcCommand -> IO ()
 sendCommand con cmd = do
   putStrLn $ "-> " ++ show cmd
   connectionPut con $ encodeUtf8 $ append (I.showCommand cmd) "\r\n"
 
-processMsg :: I.IrcMessage -> IO (Maybe I.IrcCommand)
-processMsg (I.IrcMessage origin msg) = do
+processMsg :: Config -> I.IrcLine -> IO (Maybe I.IrcCommand)
+processMsg cfg (I.IrcLine origin msg) = do
   putStrLn $ "<- " ++ show origin ++ " - " ++ show msg
-  case msg of
-    I.PingCommand t -> return . Just $ I.PongCommand t
-    I.PrivmsgCommand ch m ->
-      if isPrefixOf "kornel" m then
-         return . Just $ I.PrivmsgCommand ch "co tam? Zażółć gęślą jaźń! 😼"
-      else return Nothing
+  case (origin, msg) of
+    (_,         I.Ping t)      -> return $ Just $ I.Pong t
+    (Just mask, I.Privmsg t m) -> processPrivmsg cfg mask t m
     _ -> return Nothing
+
+processPrivmsg :: Config -> I.Hostmask -> Text -> Text -> IO (Maybe I.IrcCommand)
+processPrivmsg cfg mask target message =
+  if (toUpper $ nick cfg) `isInfixOf` (toUpper $ message) then
+    return $ Just $ I.Privmsg target $ Text.concat [I.nick mask, ": co tam? Zażółć gęślą jaźń! 😼"]
+  else return Nothing
