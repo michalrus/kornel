@@ -13,6 +13,7 @@ import Control.Applicative
 import Data.Text as Text
 import Data.Attoparsec.Text as P
 import Text.Printf (printf)
+import qualified Data.List as L
 
 data Hostmask = Hostmask
                  { nick :: Text
@@ -30,6 +31,8 @@ data IrcCommand
   | Nick Text
   | User Text Text Text Text
   | Join [Text]
+  | Part [Text] (Maybe Text)
+  | Mode Text Text [Text]
   | Notice Text Text
   | Privmsg Text Text
   | StringCommand Text [Text]
@@ -46,6 +49,8 @@ showCommand = \case
   Nick n             -> c ["NICK ", n]
   User user a b real -> c ["USER ", user, " ", a, " ", b, " :", real]
   Join chs           -> c ["JOIN ", intercalate "," chs]
+  Part chs reason    -> c ["PART ", intercalate "," chs, maybe "" (append " :") reason]
+  Mode t m args      -> c $ ["MODE ", t, " ", m, " "] ++ L.intersperse " " args
   Notice t m         -> c ["NOTICE ", t, " :", m]
   Privmsg t m        -> c ["PRIVMSG ", t, " :", m]
   StringCommand  name args -> c $ name                        : colonizeArgs args
@@ -75,6 +80,9 @@ parseCommand =
     argument = skipMany1 space *> (lastOne <|> (takeWhile1 $ not . isWhitespace))
       where lastOne = char ':' *> (P.takeTill isEndOfLine)
 
+    optionalArg :: Parser (Maybe Text)
+    optionalArg = option Nothing (Just <$> argument)
+
     numericCmd :: Parser IrcCommand
     numericCmd = NumericCommand <$> decimal <*> many argument
 
@@ -87,6 +95,8 @@ parseCommand =
         "NICK"    -> Nick    <$> argument
         "USER"    -> User    <$> argument <*> argument <*> argument <*> argument
         "JOIN"    -> Join    <$> splitOn "," <$> argument
+        "MODE"    -> Mode    <$> argument <*> argument <*> many argument
+        "PART"    -> Part    <$> splitOn "," <$> argument <*> optionalArg
         "NOTICE"  -> Notice  <$> argument <*> argument
         "PRIVMSG" -> Privmsg <$> argument <*> argument
         _         -> StringCommand cmd <$> many argument
