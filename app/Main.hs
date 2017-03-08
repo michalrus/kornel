@@ -57,11 +57,11 @@ login cfg ctx = do
                             , connectionUseSecure = Nothing
                             , connectionUseSocks  = Nothing
                             }
-  -- FIXME: use sendCommand
-  connectionPut con $ B.pack $
-    "NICK " ++ (nick cfg) ++ "\r\n" ++
-    "USER " ++ (nick cfg) ++ " - - :" ++ realName ++ "\r\n" ++
-    "JOIN " ++ (channel cfg) ++ "\r\n"
+  mapM_ (sendCommand con)
+    [ I.NickCommand $ B.pack $ nick cfg
+    , I.UserCommand (B.pack $ nick cfg) "-" "-" (B.pack realName)
+    , I.JoinCommand $ B.pack <$> [channel cfg]
+    ]
   return con
 
 processLine :: Connection -> IO ()
@@ -87,4 +87,8 @@ processMsg (I.IrcMessage origin msg) = do
   putStrLn $ "<- " ++ show origin ++ " - " ++ show msg
   case msg of
     I.PingCommand t -> return . Just $ I.PongCommand t
+    I.PrivmsgCommand ch m ->
+      if B.isPrefixOf "kornel" m then
+         return . Just $ I.PrivmsgCommand ch "co tam? Zażółć gęślą jaźń!"
+      else return Nothing
     _ -> return Nothing
