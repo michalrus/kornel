@@ -27,7 +27,13 @@ login cfg ctx = do
   con <- connectTo ctx $ ConnectionParams
                             { connectionHostname  = serverHost cfg
                             , connectionPort      = serverPort cfg
-                            , connectionUseSecure = Nothing
+                            , connectionUseSecure =
+                              if (not $ usingSSL cfg) then Nothing
+                              else Just $ TLSSettingsSimple
+                                   { settingDisableCertificateValidation = False
+                                   , settingDisableSession = True
+                                   , settingUseServerName = True
+                                   }
                             , connectionUseSocks  = Nothing
                             }
   mapM_ (sendCommand con)

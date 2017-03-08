@@ -11,6 +11,7 @@ import Data.Semigroup ((<>))
 data Config = Config
               { serverHost :: HostName
               , serverPort :: PortNumber
+              , usingSSL :: Bool
               , nick :: Text
               , channel :: Text
               }
@@ -23,6 +24,7 @@ configParser = Config
   <*> option auto (long "port"
                    <> metavar "PORT"
                    <> help "Port on the HOST")
+  <*> switch (long "ssl")
   <*> (pack <$> strOption (long "nick"))
   <*> (pack <$> strOption (long "channel"))
 
