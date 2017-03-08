@@ -66,5 +66,7 @@ processMsg cfg (I.IrcLine origin msg) = do
 processPrivmsg :: Config -> I.Hostmask -> Text -> Text -> IO (Maybe I.IrcCommand)
 processPrivmsg cfg mask target message =
   if (toUpper $ nick cfg) `isInfixOf` (toUpper $ message) then
-    return $ Just $ I.Privmsg target $ Text.concat [I.nick mask, ": co tam? Zażółć gęślą jaźń! 😼"]
+    return $ Just $ I.Privmsg replyTo $ Text.concat [I.nick mask, ": co tam? Zażółć gęślą jaźń! 😼"]
   else return Nothing
+  where
+    replyTo = if (target /= nick cfg) then target else I.nick mask
