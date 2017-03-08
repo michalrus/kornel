@@ -2,51 +2,51 @@
 {-# LANGUAGE LambdaCase #-}
 
 module IrcParser
-    ( IrcMessage(..)
-    , IrcCommand(..)
-    , readMessage
-    , showCommand
-    ) where
+       ( IrcMessage(..)
+       , IrcCommand(..)
+       , readMessage
+       , showCommand
+       ) where
 
 import Control.Applicative
-import Data.ByteString.Char8 as B
-import Data.Attoparsec.ByteString.Char8 as P
-import Data.Char (toUpper)
-import Text.Printf
+import Data.Text as Text
+import Data.Attoparsec.Text as P
+import Data.Char (isSpace)
+import Text.Printf (printf)
 
-newtype IrcOrigin = IrcOrigin ByteString deriving (Show, Eq)
+newtype IrcOrigin = IrcOrigin Text deriving (Show, Eq)
 
 data IrcMessage = IrcMessage (Maybe IrcOrigin) IrcCommand
   deriving (Show, Eq)
 
 data IrcCommand
-  = PingCommand ByteString
-  | PongCommand ByteString
-  | NickCommand ByteString
-  | UserCommand ByteString ByteString ByteString ByteString
-  | JoinCommand [ByteString]
-  | NoticeCommand ByteString ByteString
-  | PrivmsgCommand ByteString ByteString
-  | StringCommand ByteString [ByteString]
-  | NumericCommand Integer [ByteString]
+  = PingCommand Text
+  | PongCommand Text
+  | NickCommand Text
+  | UserCommand Text Text Text Text
+  | JoinCommand [Text]
+  | NoticeCommand Text Text
+  | PrivmsgCommand Text Text
+  | StringCommand Text [Text]
+  | NumericCommand Integer [Text]
   deriving (Show, Eq)
 
-readMessage :: ByteString -> Either String IrcMessage
+readMessage :: Text -> Either String IrcMessage
 readMessage msg = parseOnly parseMessage msg
 
-showCommand :: IrcCommand -> ByteString
+showCommand :: IrcCommand -> Text
 showCommand = \case
-  PingCommand t -> c ["PING :", t]
-  PongCommand t -> c ["PONG :", t]
-  NickCommand n -> c ["NICK ", n]
+  PingCommand t             -> c ["PING :", t]
+  PongCommand t             -> c ["PONG :", t]
+  NickCommand n             -> c ["NICK ", n]
   UserCommand user a b real -> c ["USER ", user, " ", a, " ", b, " :", real]
-  JoinCommand chs -> c ["JOIN ", intercalate "," chs]
-  NoticeCommand t m -> c ["NOTICE ", t, " :", m]
-  PrivmsgCommand t m -> c ["PRIVMSG ", t, " :", m]
-  StringCommand  name args -> c $ name                          : colonizeArgs args
-  NumericCommand name args -> c $ (B.pack $ printf "%03i" name) : colonizeArgs args
+  JoinCommand chs           -> c ["JOIN ", intercalate "," chs]
+  NoticeCommand t m         -> c ["NOTICE ", t, " :", m]
+  PrivmsgCommand t m        -> c ["PRIVMSG ", t, " :", m]
+  StringCommand  name args  -> c $ name                        : colonizeArgs args
+  NumericCommand name args  -> c $ (pack $ printf "%03i" name) : colonizeArgs args
   where
-    c = B.concat
+    c = Text.concat
     colonizeArgs xs = if Prelude.null xs then [] else Prelude.init xs ++ [append ":" $ Prelude.last xs]
 
 parseMessage :: Parser IrcMessage
@@ -59,7 +59,7 @@ parseCommand :: Parser IrcCommand
 parseCommand =
   skipMany space *> (numericCmd <|> stringCmd)
   where
-    argument :: Parser ByteString
+    argument :: Parser Text
     argument = skipMany1 space *> (lastOne <|> (takeWhile1 $ not . isWhitespace))
       where lastOne = char ':' *> (P.takeWhile $ not . isEOL)
 
@@ -68,16 +68,16 @@ parseCommand =
 
     stringCmd :: Parser IrcCommand
     stringCmd = do
-      cmd <- B.map toUpper <$> (takeWhile1 $ inClass "A-Za-z0-9_")
+      cmd <- (takeWhile1 $ inClass "A-Za-z0-9_")
       case cmd of
-        "PING" -> PingCommand <$> argument
-        "PONG" -> PongCommand <$> argument
-        "NICK" -> NickCommand <$> argument
-        "USER" -> UserCommand <$> argument <*> argument <*> argument <*> argument
-        "JOIN" -> JoinCommand <$> split ',' <$> argument
-        "NOTICE" -> NoticeCommand <$> argument <*> argument
+        "PING"    -> PingCommand    <$> argument
+        "PONG"    -> PongCommand    <$> argument
+        "NICK"    -> NickCommand    <$> argument
+        "USER"    -> UserCommand    <$> argument <*> argument <*> argument <*> argument
+        "JOIN"    -> JoinCommand    <$> splitOn "," <$> argument
+        "NOTICE"  -> NoticeCommand  <$> argument <*> argument
         "PRIVMSG" -> PrivmsgCommand <$> argument <*> argument
-        _ -> StringCommand cmd <$> many argument
+        _         -> StringCommand cmd <$> many argument
 
 isWhitespace :: Char -> Bool
 isWhitespace c = isSpace c || isEOL c || c == '\t'

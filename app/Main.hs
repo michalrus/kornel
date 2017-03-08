@@ -6,41 +6,14 @@ module Main where
 import System.IO
 import System.IO.Error
 import Control.Monad
-import Data.Semigroup ((<>))
-import Options.Applicative
-import qualified Data.ByteString.Char8 as B
+import Data.Text
+import Data.Text.Encoding (decodeUtf8With, encodeUtf8)
 import Network.Connection
-import Network.Socket
 import qualified IrcParser as I
-
-data Config = Config
-              { serverHost :: HostName
-              , serverPort :: PortNumber
-              , nick :: String
-              , channel :: String
-              }
-
-configParser :: Parser Config
-configParser = Config
-  <$> strOption (long "host"
-                 <> metavar "HOST"
-                 <> help "Server to connect to")
-  <*> option auto (long "port"
-                   <> metavar "PORT"
-                   <> help "Port on the HOST")
-  <*> strOption (long "nick")
-  <*> strOption (long "channel")
+import CLI
 
 main :: IO ()
-main = runConfig =<< execParser opts
-  where
-    opts = info (configParser <**> helper)
-      (fullDesc
-       <> progDesc "Print a greeting for TARGET"
-       <> header "hello - a test for optparse-applicative")
-
-realName :: String
-realName = "https://github.com/michalrus/kornel"
+main = readConfig >>= runConfig
 
 runConfig :: Config -> IO ()
 runConfig cfg = do
@@ -49,7 +22,7 @@ runConfig cfg = do
   catchIOError (forever $ processLine con)
     (\e -> if isEOFError e then return () else ioError e)
 
-login :: Config -> ConnectionContext -> IO Connection
+login :: CLI.Config -> ConnectionContext -> IO Connection
 login cfg ctx = do
   con <- connectTo ctx $ ConnectionParams
                             { connectionHostname  = serverHost cfg
@@ -58,15 +31,15 @@ login cfg ctx = do
                             , connectionUseSocks  = Nothing
                             }
   mapM_ (sendCommand con)
-    [ I.NickCommand $ B.pack $ nick cfg
-    , I.UserCommand (B.pack $ nick cfg) "-" "-" (B.pack realName)
-    , I.JoinCommand $ B.pack <$> [channel cfg]
+    [ I.NickCommand $ nick cfg
+    , I.UserCommand (nick cfg) "-" "-" "https://github.com/michalrus/kornel"
+    , I.JoinCommand [channel cfg]
     ]
   return con
 
 processLine :: Connection -> IO ()
 processLine con = do
-  raw <- trimCR <$> connectionGetLine 512 con
+  raw <- dropWhileEnd isCRLF <$> (decodeUtf8With $ \_ _ -> Just '_') <$> connectionGetLine 512 con
   case I.readMessage raw of
     Left  err -> hPutStrLn stderr $ "Failed to parse message ‘" ++ show raw ++ "’ with ‘" ++ show err ++ "’"
     Right ok  -> do
@@ -75,12 +48,12 @@ processLine con = do
         Nothing -> return ()
         Just r -> sendCommand con r
   where
-    trimCR ln = if not $ B.null ln && B.last ln == '\r' then B.init ln else ln
+    isCRLF c = c == '\r' || c == '\n'
 
 sendCommand :: Connection -> I.IrcCommand -> IO ()
 sendCommand con cmd = do
   putStrLn $ "-> " ++ show cmd
-  connectionPut con $ B.append (I.showCommand cmd) "\r\n"
+  connectionPut con $ encodeUtf8 $ append (I.showCommand cmd) "\r\n"
 
 processMsg :: I.IrcMessage -> IO (Maybe I.IrcCommand)
 processMsg (I.IrcMessage origin msg) = do
@@ -88,7 +61,7 @@ processMsg (I.IrcMessage origin msg) = do
   case msg of
     I.PingCommand t -> return . Just $ I.PongCommand t
     I.PrivmsgCommand ch m ->
-      if B.isPrefixOf "kornel" m then
-         return . Just $ I.PrivmsgCommand ch "co tam? Zażółć gęślą jaźń!"
+      if isPrefixOf "kornel" m then
+         return . Just $ I.PrivmsgCommand ch "co tam? Zażółć gęślą jaźń! 😼"
       else return Nothing
     _ -> return Nothing
