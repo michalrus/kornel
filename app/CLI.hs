@@ -13,6 +13,7 @@ data Config = Config
               , serverPort :: PortNumber
               , usingSSL :: Bool
               , nick :: Text
+              , nickservPasswordFile :: Maybe FilePath
               , channel :: Text
               }
 
@@ -26,6 +27,7 @@ configParser = Config
                    <> help "Port on the HOST")
   <*> switch (long "ssl")
   <*> (pack <$> strOption (long "nick"))
+  <*> (optional $ strOption (long "nickserv-password-file"))
   <*> (pack <$> strOption (long "channel"))
 
 readConfig :: IO Config
@@ -33,5 +35,4 @@ readConfig = execParser opts
   where
     opts = info (configParser <**> helper)
       (fullDesc
-       <> progDesc "Print a greeting for TARGET"
-       <> header "hello - a test for optparse-applicative")
+       <> header "kornel — a simple IRC bot")

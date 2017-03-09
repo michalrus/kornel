@@ -6,14 +6,18 @@ module Main where
 import System.IO
 import System.IO.Error
 import Control.Monad
+import Data.Maybe (maybeToList)
 import Data.Text as Text -- bug in Intero?
 import Data.Text.Encoding (decodeUtf8With, encodeUtf8)
+import qualified Data.Text.IO as TIO
 import Network.Connection
 import qualified IrcParser as I
 import CLI
 
 main :: IO ()
-main = readConfig >>= runConfig
+main = do
+  mapM_ (flip hSetEncoding utf8) [stdout, stdin, stderr]
+  readConfig >>= runConfig
 
 runConfig :: Config -> IO ()
 runConfig cfg = do
@@ -36,11 +40,15 @@ login cfg ctx = do
                                    }
                             , connectionUseSocks  = Nothing
                             }
-  mapM_ (sendCommand con)
+  nickservCmd <- flip traverse (nickservPasswordFile cfg) $
+    \path -> do
+      pw <- strip <$> TIO.readFile path
+      return $ I.Privmsg "NickServ" (append "IDENTIFY " $ pw)
+  mapM_ (sendCommand con) $
     [ I.Nick $ nick cfg
     , I.User (nick cfg) "-" "-" "https://github.com/michalrus/kornel"
     , I.Join [channel cfg]
-    ]
+    ] ++ maybeToList nickservCmd
   return con
 
 processLine :: Config -> Connection -> IO ()
