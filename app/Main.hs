@@ -1,3 +1,4 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE LambdaCase #-}
 
@@ -5,6 +6,8 @@ module Main where
 
 import System.IO
 import System.IO.Error
+import System.Timeout
+import Control.Exception.Base (catch, SomeException)
 import Control.Monad
 import Control.Monad.Loops (whileJust_, iterateWhile)
 import Control.Concurrent (forkIO, threadDelay, killThread)
@@ -27,7 +30,12 @@ main = do
 runConfig :: Config -> IO ()
 runConfig cfg = do
   ctx <- initConnectionContext
-  forever $ runSession cfg ctx
+  forever $ do
+    hPutStrLn stderr "Starting new session…"
+    catch (runSession cfg ctx) $ \(e :: SomeException) ->
+      hPutStrLn stderr $ "Error: " ++ show e
+    hPutStrLn stderr "Session ended."
+    threadDelay $ 10 * 1000 * 1000 -- µs
 
 data IpcQueue
   = QServerLine I.IrcLine
@@ -38,12 +46,13 @@ runSession :: Config -> ConnectionContext -> IO ()
 runSession cfg ctx = do
   con <- login cfg ctx
   ipc <- newChan
+  let pingEvery = 20 * 1000 * 1000 -- µs
   -- parse & enqueue lines from server
   _ <- forkIO $ do
-    whileJust_ (processRawLine con) $ writeChan ipc . QServerLine
+    let timedProcessLine = join <$> (timeout (2 * pingEvery) $ processRawLine con)
+    whileJust_ timedProcessLine $ writeChan ipc . QServerLine
     writeChan ipc QQuit
   -- send our PINGs
-  let pingEvery = 20 * 1000 * 1000
   thrPing <- forkIO $ forever $ do
     threadDelay pingEvery
     uuid <- UUID.nextRandom
