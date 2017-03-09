@@ -23,7 +23,7 @@ runConfig :: Config -> IO ()
 runConfig cfg = do
   ctx <- initConnectionContext
   con <- login cfg ctx
-  catchIOError (forever $ processLine cfg con)
+  catchIOError (forever $ processRawLine cfg con)
     (\e -> if isEOFError e then return () else ioError e)
 
 login :: CLI.Config -> ConnectionContext -> IO Connection
@@ -51,13 +51,13 @@ login cfg ctx = do
     ] ++ maybeToList nickservCmd
   return con
 
-processLine :: Config -> Connection -> IO ()
-processLine cfg con = do
+processRawLine :: Config -> Connection -> IO ()
+processRawLine cfg con = do
   raw <- dropWhileEnd isEndOfLine <$> (decodeUtf8With $ \_ _ -> Just '_') <$> connectionGetLine 512 con
   case I.readMessage raw of
     Left  err -> hPutStrLn stderr $ "Failed to parse message ‘" ++ show raw ++ "’ with ‘" ++ show err ++ "’"
     Right ok  -> do
-      response <- processMsg cfg ok
+      response <- handleLine cfg ok
       case response of
         Nothing -> return ()
         Just r -> sendCommand con r
@@ -69,16 +69,16 @@ sendCommand con cmd = do
   putStrLn $ "-> " ++ show cmd
   connectionPut con $ encodeUtf8 $ append (I.showCommand cmd) "\r\n"
 
-processMsg :: Config -> I.IrcLine -> IO (Maybe I.IrcCommand)
-processMsg cfg (I.IrcLine origin msg) = do
+handleLine :: Config -> I.IrcLine -> IO (Maybe I.IrcCommand)
+handleLine cfg (I.IrcLine origin msg) = do
   putStrLn $ "<- " ++ show origin ++ " - " ++ show msg
   case (origin, msg) of
     (_,         I.Ping t)      -> return $ Just $ I.Pong t
-    (Just mask, I.Privmsg t m) -> processPrivmsg cfg mask t m
+    (Just mask, I.Privmsg t m) -> handlePrivmsg cfg mask t m
     _ -> return Nothing
 
-processPrivmsg :: Config -> I.Hostmask -> Text -> Text -> IO (Maybe I.IrcCommand)
-processPrivmsg cfg mask target message =
+handlePrivmsg :: Config -> I.Hostmask -> Text -> Text -> IO (Maybe I.IrcCommand)
+handlePrivmsg cfg mask target message =
   if (toUpper $ nick cfg) `isInfixOf` (toUpper $ message) then
     return $ Just $ I.Privmsg replyTo $ Text.concat [I.nick mask, ": co tam? Zażółć gęślą jaźń! 😼"]
   else return Nothing
