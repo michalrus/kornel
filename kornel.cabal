@@ -32,6 +32,8 @@ executable kornel-exe
                      , optparse-applicative
                      , network
                      , connection
+                     , monad-loops
+                     , uuid
   other-modules:       CLI
   default-language:    Haskell2010
 
