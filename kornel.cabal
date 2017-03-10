@@ -36,6 +36,7 @@ executable kornel-exe
                      , uuid
   other-modules:       CLI
                      , LineHandler
+                     , LineHandler.Chatter
   default-language:    Haskell2010
 
 test-suite kornel-test

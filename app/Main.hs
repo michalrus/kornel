@@ -22,6 +22,7 @@ import Network.Connection
 import qualified IrcParser as I
 import CLI
 import LineHandler
+import qualified LineHandler.Chatter
 
 main :: IO ()
 main = do
@@ -70,7 +71,7 @@ runSession cfg ctx = do
             in keepProcessingWith $ editNth handlerId new handlers
           QClientLine cmd -> sendCommand con cmd >> keepProcessingWith handlers
           QServerLine ln -> do
-            forM_ ([0..] `Prelude.zip` handlers) $ \(handlerId, LineHandler handler) -> do
+            forM_ ([0..] `Prelude.zip` handlers) $ \(handlerId, Handler handler) -> do
               _ <- forkIO $ do
                 (resp, newHandler) <- handler ln
                 writeChan ipc $ QUpdateHandler handlerId newHandler
@@ -80,6 +81,7 @@ runSession cfg ctx = do
             keepProcessingWith handlers
   keepProcessingWith [ handleLogging
                      , handlePing
+                     , LineHandler.Chatter.handle
                      ]
   killThread thrPing
   return ()
@@ -128,12 +130,12 @@ sendCommand con cmd = do
   connectionPut con $ encodeUtf8 $ append (I.showCommand cmd) "\r\n"
 
 handlePing :: LineHandler
-handlePing = LineHandler $ \case
+handlePing = Handler $ \case
   I.IrcLine _ (I.Ping t) -> return (Just $ I.Pong t, handlePing)
   _                      -> return (Nothing,         handlePing)
 
 handleLogging :: LineHandler
-handleLogging = LineHandler $ \case
+handleLogging = Handler $ \case
   I.IrcLine origin msg -> do
     putStrLn $ "<- " ++ show origin ++ " - " ++ show msg
     return (Nothing, handleLogging)
