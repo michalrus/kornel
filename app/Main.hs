@@ -9,7 +9,7 @@ import System.IO.Error
 import System.Timeout
 import Control.Exception.Base (catch, SomeException)
 import Control.Monad
-import Control.Monad.Loops (whileJust_, iterateWhile)
+import Control.Monad.Loops (whileJust_)
 import Control.Concurrent (forkIO, threadDelay, killThread)
 import Control.Concurrent.Chan
 import Data.Maybe (maybeToList)
@@ -21,6 +21,7 @@ import qualified Data.UUID as UUID
 import Network.Connection
 import qualified IrcParser as I
 import CLI
+import LineHandler
 
 main :: IO ()
 main = do
@@ -38,9 +39,10 @@ runConfig cfg = do
     threadDelay $ 10 * 1000 * 1000 -- µs
 
 data IpcQueue
-  = QServerLine I.IrcLine
-  | QQuit
+  = QQuit
   | QClientLine I.IrcCommand
+  | QServerLine I.IrcLine
+  | QUpdateHandler Int LineHandler
 
 runSession :: Config -> ConnectionContext -> IO ()
 runSession cfg ctx = do
@@ -57,12 +59,28 @@ runSession cfg ctx = do
     threadDelay pingEvery
     uuid <- UUID.nextRandom
     writeChan ipc $ QClientLine $ I.Ping $ pack $ UUID.toString uuid
-  -- process the queue
-  _ <- iterateWhile id $ do
-    readChan ipc >>= \case
-      QQuit -> return False
-      QClientLine cmd -> sendCommand con cmd >> return True
-      QServerLine ln -> (forkIO $ handleLine cfg ln >>= mapM_ (writeChan ipc . QClientLine)) >> return True
+  -- process the queue, running each handler for each message on its own thread
+  let keepProcessingWith handlers = do
+        readChan ipc >>= \case
+          QQuit -> return ()
+          QUpdateHandler handlerId new ->
+            let editNth n x xs = if (0 <= n && n < Prelude.length xs) then
+                                   Prelude.take n xs ++ [x] ++ Prelude.drop (n + 1) xs
+                                 else xs
+            in keepProcessingWith $ editNth handlerId new handlers
+          QClientLine cmd -> sendCommand con cmd >> keepProcessingWith handlers
+          QServerLine ln -> do
+            forM_ ([0..] `Prelude.zip` handlers) $ \(handlerId, LineHandler handler) -> do
+              _ <- forkIO $ do
+                (resp, newHandler) <- handler ln
+                writeChan ipc $ QUpdateHandler handlerId newHandler
+                let _ = newHandler -- FIXME
+                mapM_ (writeChan ipc . QClientLine) resp
+              return ()
+            keepProcessingWith handlers
+  keepProcessingWith [ handleLogging
+                     , handlePing
+                     ]
   killThread thrPing
   return ()
 
@@ -109,18 +127,13 @@ sendCommand con cmd = do
   putStrLn $ "-> " ++ show cmd
   connectionPut con $ encodeUtf8 $ append (I.showCommand cmd) "\r\n"
 
-handleLine :: Config -> I.IrcLine -> IO (Maybe I.IrcCommand)
-handleLine cfg (I.IrcLine origin msg) = do
-  putStrLn $ "<- " ++ show origin ++ " - " ++ show msg
-  case (origin, msg) of
-    (_,         I.Ping t)      -> return $ Just $ I.Pong t
-    (Just mask, I.Privmsg t m) -> handlePrivmsg cfg mask t m
-    _ -> return Nothing
+handlePing :: LineHandler
+handlePing = LineHandler $ \case
+  I.IrcLine _ (I.Ping t) -> return (Just $ I.Pong t, handlePing)
+  _                      -> return (Nothing,         handlePing)
 
-handlePrivmsg :: Config -> I.Hostmask -> Text -> Text -> IO (Maybe I.IrcCommand)
-handlePrivmsg cfg mask target message =
-  if (toUpper $ nick cfg) `isInfixOf` (toUpper $ message) then
-    return $ Just $ I.Privmsg replyTo $ Text.concat [I.nick mask, ": co tam? Zażółć gęślą jaźń! 😼"]
-  else return Nothing
-  where
-    replyTo = if (target /= nick cfg) then target else I.nick mask
+handleLogging :: LineHandler
+handleLogging = LineHandler $ \case
+  I.IrcLine origin msg -> do
+    putStrLn $ "<- " ++ show origin ++ " - " ++ show msg
+    return (Nothing, handleLogging)

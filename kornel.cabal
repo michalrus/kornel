@@ -35,6 +35,7 @@ executable kornel-exe
                      , monad-loops
                      , uuid
   other-modules:       CLI
+                     , LineHandler
   default-language:    Haskell2010
 
 test-suite kornel-test
