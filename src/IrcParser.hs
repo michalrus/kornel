@@ -1,6 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE LambdaCase #-}
-
 module IrcParser
        ( IrcLine(..)
        , IrcCommand(..)
