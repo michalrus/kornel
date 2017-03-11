@@ -73,9 +73,8 @@ runSession cfg ctx = do
           QServerLine ln -> do
             forM_ ([0..] `Prelude.zip` handlers) $ \(handlerId, Handler handler) -> do
               _ <- forkIO $ do
-                (resp, newHandler) <- handler ln
+                (resp, newHandler) <- handler cfg ln
                 writeChan ipc $ QUpdateHandler handlerId newHandler
-                let _ = newHandler -- FIXME
                 mapM_ (writeChan ipc . QClientLine) resp
               return ()
             keepProcessingWith handlers
@@ -130,12 +129,12 @@ sendCommand con cmd = do
   connectionPut con $ encodeUtf8 $ append (I.showCommand cmd) "\r\n"
 
 handlePing :: LineHandler
-handlePing = Handler $ \case
+handlePing = Handler $ \_ -> \case
   I.IrcLine _ (I.Ping t) -> return (Just $ I.Pong t, handlePing)
   _                      -> return (Nothing,         handlePing)
 
 handleLogging :: LineHandler
-handleLogging = Handler $ \case
+handleLogging = Handler $ \_ -> \case
   I.IrcLine origin msg -> do
     putStrLn $ "<- " ++ show origin ++ " - " ++ show msg
     return (Nothing, handleLogging)
