@@ -11,7 +11,6 @@ import Control.Monad
 import Data.Monoid ((<>))
 import Data.Text as T
 import Data.Attoparsec.Text as P
-import System.Random (randomRIO)
 
 handle :: LineHandler
 handle = onlyPrivmsg handleP
@@ -83,16 +82,3 @@ listPeople = \case
   x1      : [] -> x1
   x1 : x2 : [] -> x1 <> " and " <> x2
   xs           -> (T.intercalate ", " $ Prelude.init xs) <> " and " <> Prelude.last xs
-
-randomElem :: [a] -> IO (Maybe a)
-randomElem [] = pure Nothing
-randomElem xs = Just . (!!) xs <$> randomRIO (0, Prelude.length xs - 1)
-
-meAction :: Text -> Text
-meAction act = "\001ACTION " <> act <> "\001"
-
-runParser :: Parser a -> Text -> Maybe a
-runParser p t = discardError $ parseOnly p t
-  where discardError = \case
-          Left _ -> Nothing
-          Right b -> Just b

@@ -84,6 +84,7 @@ runSession cfg ctx = do
                      , LineHandler.Chatter.handle
                      , LineHandler.Slap.handle
                      ]
+  connectionClose con
   killThread thrPing
   return ()
 
