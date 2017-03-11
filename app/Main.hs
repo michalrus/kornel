@@ -23,6 +23,7 @@ import qualified IrcParser as I
 import CLI
 import LineHandler
 import qualified LineHandler.Chatter
+import qualified LineHandler.Slap
 
 main :: IO ()
 main = do
@@ -81,6 +82,7 @@ runSession cfg ctx = do
   keepProcessingWith [ handleLogging
                      , handlePing
                      , LineHandler.Chatter.handle
+                     , LineHandler.Slap.handle
                      ]
   killThread thrPing
   return ()

@@ -34,9 +34,12 @@ executable kornel-exe
                      , connection
                      , monad-loops
                      , uuid
+                     , random
+                     , attoparsec
   other-modules:       CLI
                      , LineHandler
                      , LineHandler.Chatter
+                     , LineHandler.Slap
   default-language:    Haskell2010
 
 test-suite kornel-test
