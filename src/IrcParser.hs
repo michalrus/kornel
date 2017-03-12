@@ -7,10 +7,10 @@ module IrcParser
        ) where
 
 import Control.Applicative
-import Data.Text as Text
+import Data.Semigroup ((<>))
+import Data.Text as T
 import Data.Attoparsec.Text as P
 import Text.Printf (printf)
-import qualified Data.List as L
 
 data Hostmask = Hostmask
                  { nick :: Text
@@ -40,21 +40,25 @@ readMessage :: Text -> Either String IrcLine
 readMessage msg = parseOnly parseMessage msg
 
 showCommand :: IrcCommand -> Text
-showCommand = \case
-  Ping t             -> c ["PING :", t]
-  Pong t             -> c ["PONG :", t]
-  Nick n             -> c ["NICK ", n]
-  User user a b real -> c ["USER ", user, " ", a, " ", b, " :", real]
-  Join chs           -> c ["JOIN ", intercalate "," chs]
-  Part chs reason    -> c ["PART ", intercalate "," chs, maybe "" (append " :") reason]
-  Mode t m args      -> c $ ["MODE ", t, " ", m, " "] ++ L.intersperse " " args
-  Notice t m         -> c ["NOTICE ", t, " :", m]
-  Privmsg t m        -> c ["PRIVMSG ", t, " :", m]
-  StringCommand  name args -> c $ name                        : colonizeArgs args
-  NumericCommand name args -> c $ (pack $ printf "%03i" name) : colonizeArgs args
+showCommand = sanitize <$> \case
+  Ping t             -> "PING :" <> t
+  Pong t             -> "PONG :" <> t
+  Nick n             -> "NICK " <> n
+  User user a b real -> "USER " <> user <> " " <> a <> " " <> b <> " :" <> real
+  Join chs           -> "JOIN " <> intercalate "," chs
+  Part chs reason    -> "PART " <> intercalate "," chs <> maybe "" (append " :") reason
+  Mode t m args      -> "MODE " <> t <> " " <> m <> " " <> intercalate " " args
+  Notice t m         -> "NOTICE " <> t <> " :" <> m
+  Privmsg t m        -> "PRIVMSG " <> t <> " :" <> m
+  StringCommand  name args -> name                        <> " " <> (intercalate " " $ colonize args)
+  NumericCommand name args -> (pack $ printf "%03i" name) <> " " <> (intercalate " " $ colonize args)
   where
-    c = Text.concat
-    colonizeArgs xs = if Prelude.null xs then [] else Prelude.init xs ++ [append ":" $ Prelude.last xs]
+    sanitize input =
+        replace "\n" "\\LF"
+      $ replace "\r" "\\CR"
+      $ input
+    colonize [] = []
+    colonize xs = Prelude.init xs ++ [":" <> Prelude.last xs]
 
 parseMessage :: Parser IrcLine
 parseMessage =
