@@ -61,6 +61,7 @@ executable kornel-exe
                      , LineHandler.Google
                      , LineHandler.Clojure
                      , LineHandler.HttpSnippets
+                     , LineHandler.BotProxy
                      , LineHandler.Scala
                      , LineHandler.Haskell
   default-language:    Haskell2010
