@@ -73,7 +73,5 @@ chatter state msg = do
                                 , ("input", Just $ encodeUtf8 msg)
                                 ]
         $ "https://www.cleverbot.com/getreply"
-  let _ = CleverbotResponse { cs = "", clever_output = "" } -- FIXME
-  response <- discardError <$> getResponseBody <$> httpJSONEither request
-  print $ (response :: Maybe CleverbotResponse)
+  response <- discardException $ getResponseBody <$> httpJSON request
   return (maybe state (\r -> state { cleverState = Just $ cs r }) response, clever_output <$> response)
