@@ -7,16 +7,19 @@ module LineHandler
        , randomElem
        , meAction
        , runParser
+       , discardException
        , discardError
        )
        where
 
-import qualified IrcParser as I
+import qualified Control.Exception.Base as E
 import Data.Attoparsec.Text as P
 import Data.Monoid ((<>))
 import Data.Text
+import System.IO
 import System.Random (randomRIO)
 import qualified CLI as C
+import qualified IrcParser as I
 
 data Handler a b = Handler (C.Config -> a -> IO (Maybe b, Handler a b))
 
@@ -47,6 +50,12 @@ meAction act = "\001ACTION " <> act <> "\001"
 
 runParser :: Parser a -> Text -> Maybe a
 runParser p t = discardError $ parseOnly p t
+
+discardException :: IO a -> IO (Maybe a)
+discardException action =
+  E.catch (Just <$> action) $ \(e :: E.SomeException) -> do
+    hPutStrLn stderr $ "Error: " ++ show e
+    return Nothing
 
 discardError :: Either a b -> Maybe b
 discardError = \case

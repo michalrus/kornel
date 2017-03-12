@@ -20,6 +20,7 @@ import CLI
 import LineHandler
 import qualified LineHandler.Chatter
 import qualified LineHandler.Slap
+import qualified LineHandler.Google
 
 main :: IO ()
 main = do
@@ -79,6 +80,7 @@ runSession cfg ctx = do
                      , handlePing
                      , LineHandler.Chatter.handle
                      , LineHandler.Slap.handle
+                     , LineHandler.Google.handle
                      ]
   connectionClose con
   killThread thrPing

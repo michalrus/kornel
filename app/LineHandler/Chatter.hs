@@ -2,12 +2,10 @@ module LineHandler.Chatter
        ( handle
        ) where
 
-import System.IO
 import GHC.Generics
 import LineHandler
 import Control.Applicative
 import Control.Monad
-import qualified Control.Exception.Base as E
 import Data.Aeson
 import Data.Attoparsec.Text as P
 import Data.Maybe (fromMaybe, maybe, isJust)
@@ -31,12 +29,6 @@ data CleverbotResponse = CleverbotResponse
                          } deriving (Show, Generic)
 
 instance FromJSON CleverbotResponse
-
-discardException :: IO a -> IO (Maybe a)
-discardException action =
-  E.catch (Just <$> action) $ \(e :: E.SomeException) -> do
-    hPutStrLn stderr $ "Error: Chatter: " ++ show e
-    return Nothing
 
 handle :: LineHandler
 handle = onlyPrivmsg $ handleP $ HState Nothing Nothing
