@@ -21,6 +21,7 @@ import LineHandler
 import qualified LineHandler.Chatter
 import qualified LineHandler.Slap
 import qualified LineHandler.Google
+import qualified LineHandler.Clojure
 
 main :: IO ()
 main = do
@@ -81,6 +82,7 @@ runSession cfg ctx = do
                      , LineHandler.Chatter.handle
                      , LineHandler.Slap.handle
                      , LineHandler.Google.handle
+                     , LineHandler.Clojure.handle
                      ]
   connectionClose con
   killThread thrPing
