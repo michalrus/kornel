@@ -32,8 +32,11 @@ instance Profunctor Handler where
       return (g <$> mb, dimap f g next)
 
 -- FIXME: is there a class for that?
--- dimapMaybe :: (c -> Maybe a) -> (b -> Maybe d) -> Handler a b -> Handler c d
--- dimapMaybe f g (Handler fab) = _
+-- dimapMaybe :: (c -> a) -> (b -> Maybe d) -> Handler a b -> Handler c d
+-- dimapMaybe f g (Handler fab) =
+--   Handler $ \cfg c -> do
+--     (mb, next) <- fab cfg (f c)
+--     return (g =<< mb, dimapMaybe f g next)
 
 emptyHandler :: Handler a b
 emptyHandler = Handler $ (\_ _ -> return (Nothing, emptyHandler))
