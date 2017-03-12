@@ -1,6 +1,5 @@
 module LineHandler.Clojure
        ( handle
-       , eval
        ) where
 
 import GHC.Generics

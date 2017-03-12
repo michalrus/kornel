@@ -55,4 +55,4 @@ firstResult input =
     _              -> Nothing
   where
     first :: ByteString = input =~ ("(?i)<h3.*?</h3>" :: ByteString)
-    parts :: [ByteString] = getAllTextSubmatches $ first =~ ("<a .*?href=\"(.*?)\".*?>(.*?)<" :: ByteString)
+    parts :: [ByteString] = getAllTextSubmatches $ first =~ ("(?i)<a .*?href=\"(.*?)\".*?>(.*?)<" :: ByteString)

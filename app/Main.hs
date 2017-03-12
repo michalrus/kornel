@@ -22,6 +22,7 @@ import qualified LineHandler.Chatter
 import qualified LineHandler.Slap
 import qualified LineHandler.Google
 import qualified LineHandler.Clojure
+import qualified LineHandler.HttpSnippets
 
 main :: IO ()
 main = do
@@ -83,6 +84,7 @@ runSession cfg ctx = do
                      , LineHandler.Slap.handle
                      , LineHandler.Google.handle
                      , LineHandler.Clojure.handle
+                     , LineHandler.HttpSnippets.handle
                      ]
   connectionClose con
   killThread thrPing
