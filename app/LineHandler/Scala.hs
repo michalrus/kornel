@@ -6,6 +6,7 @@ import LineHandler
 import CLI as C
 import qualified IrcParser as I
 import Control.Applicative
+import Control.Monad
 import Data.Semigroup ((<>))
 import Data.Text as T
 import Data.Attoparsec.Text as P
@@ -31,23 +32,23 @@ handle' state = Handler $ \cfg -> \case
 
     | otherwise ->
         case runParser cmdParser msg of
-          Just (command, expr) -> do
+          Just command -> do
             let replyTo = if (target /= C.nick cfg) then target else I.nick origin
-            return (Just $ I.Privmsg scalabotNick $ command <> " " <> expr,
+            return (Just $ I.Privmsg scalabotNick $ command,
                     handle' $ state { lastReplyTo = Just replyTo })
 
           _ -> return (Nothing, handle' state)
 
   _ -> return (Nothing, handle' state)
 
-cmdParser :: Parser (Text, Text)
+cmdParser :: Parser (Text)
 cmdParser = do
   skipSpace
   asciiCI "@scala" *> spc
   command
-    <-  ((asciiCI ":type"  <|> asciiCI ":t") *> spc *> pure "!type")
+    <-  ((asciiCI ":type" <|> asciiCI ":t") *> spc *> pure "!type")
     <|> (pure "!")
   expr <- takeText
-  return (command, expr)
+  return (command <> " " <> expr)
   where
-    spc = skip isHorizontalSpace
+    spc = void . many1 $ skip isHorizontalSpace

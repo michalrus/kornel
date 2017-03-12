@@ -24,6 +24,7 @@ import qualified LineHandler.Google
 import qualified LineHandler.Clojure
 import qualified LineHandler.HttpSnippets
 import qualified LineHandler.Scala
+import qualified LineHandler.Haskell
 
 main :: IO ()
 main = do
@@ -87,6 +88,7 @@ runSession cfg ctx = do
                      , LineHandler.Clojure.handle
                      , LineHandler.HttpSnippets.handle
                      , LineHandler.Scala.handle
+                     , LineHandler.Haskell.handle
                      ]
   connectionClose con
   killThread thrPing
