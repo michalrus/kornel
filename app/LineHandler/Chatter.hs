@@ -10,7 +10,7 @@ import Control.Monad
 import qualified Control.Exception.Base as E
 import Data.Aeson
 import Data.Attoparsec.Text as P
-import Data.Maybe (fromMaybe, maybe)
+import Data.Maybe (fromMaybe, maybe, isJust)
 import Data.Monoid ((<>))
 import Data.Text as T
 import qualified Data.Text.IO as TIO
@@ -22,7 +22,7 @@ import CLI
 
 data HState = HState
               { cleverState :: Maybe Text
-              , apiKey :: Text
+              , apiKey :: Maybe Text
               }
 
 data CleverbotResponse = CleverbotResponse
@@ -39,24 +39,24 @@ discardException action =
     return Nothing
 
 handle :: LineHandler
-handle = Handler $ \cfg args -> do
-  cbApiKey <- join <$> (discardException
-                        $ flip traverse (cleverBotApiKeyFile cfg)
-                        $ \p -> strip <$> TIO.readFile p)
-  let Handler h = maybe emptyHandler handle' cbApiKey
-  h cfg args
-
-handle' :: Text -> LineHandler
-handle' cbApiKey = onlyPrivmsg $ handleP $ HState Nothing cbApiKey
+handle = onlyPrivmsg $ handleP $ HState Nothing Nothing
 
 handleP :: HState -> PrivmsgHandler
 handleP state = Handler $ \cfg (hostmask, _, msg) ->
   if (toUpper $ nick cfg) `isInfixOf` (toUpper $ msg) then do
     let question = fromMaybe msg $ runParser (noHighlight $ nick cfg) msg
+    stateWithKey <- tryToLoadKey cfg state
+    (nextState, answer) <- (fromMaybe (state, Nothing)) <$> (discardException $ chatter stateWithKey question)
     let highlight t = (I.nick hostmask) <> ": " <> t
-    (newState, answer) <- (fromMaybe (state, Nothing)) <$> (discardException $ chatter state question)
-    return (highlight <$> answer, handleP newState)
+    return (highlight <$> answer, handleP nextState)
   else return (Nothing, handleP state)
+
+tryToLoadKey :: Config -> HState -> IO HState
+tryToLoadKey cfg state = if isJust $ apiKey state then return state else do
+  cbApiKey <- join <$> (discardException
+                         $ flip traverse (cleverBotApiKeyFile cfg)
+                         $ \p -> strip <$> TIO.readFile p)
+  return $ state { apiKey = cbApiKey }
 
 noHighlight :: Text -> Parser Text
 noHighlight myNick =
@@ -68,7 +68,7 @@ chatter state msg = do
   manager <- HTTPS.newTlsManager
   let request
         = setRequestManager manager
-        $ setRequestQueryString [ ("key",   Just $ encodeUtf8 $ apiKey state)
+        $ setRequestQueryString [ ("key",   encodeUtf8 <$> apiKey state)
                                 , ("cs",    encodeUtf8 <$> cleverState state)
                                 , ("input", Just $ encodeUtf8 msg)
                                 ]
