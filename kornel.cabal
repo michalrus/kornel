@@ -46,6 +46,11 @@ executable kornel-exe
                      , uuid
                      , random
                      , attoparsec
+                     , bytestring
+                     , http-client-tls
+                     , http-conduit
+                     , http-client
+                     , aeson
   other-modules:       CLI
                      , LineHandler
                      , LineHandler.Chatter

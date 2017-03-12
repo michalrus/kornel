@@ -1,11 +1,13 @@
 module LineHandler
        ( Handler(..)
+       , emptyHandler
        , LineHandler
        , PrivmsgHandler
        , onlyPrivmsg
        , randomElem
        , meAction
        , runParser
+       , discardError
        )
        where
 
@@ -16,12 +18,15 @@ import Data.Text
 import System.Random (randomRIO)
 import qualified CLI as C
 
-data Handler a b = Handler (C.Config -> a -> IO (b, Handler a b))
+data Handler a b = Handler (C.Config -> a -> IO (Maybe b, Handler a b))
 
-type LineHandler = Handler I.IrcLine (Maybe I.IrcCommand)
+emptyHandler :: Handler a b
+emptyHandler = Handler $ (\_ _ -> return (Nothing, emptyHandler))
+
+type LineHandler = Handler I.IrcLine I.IrcCommand
 
 -- | If you only want to react with text in response to text messages, use this.
-type PrivmsgHandler = Handler (I.Hostmask, Text, Text) (Maybe Text)
+type PrivmsgHandler = Handler (I.Hostmask, Text, Text) Text
 
 onlyPrivmsg :: PrivmsgHandler -> LineHandler
 onlyPrivmsg (Handler handler) =
@@ -42,6 +47,8 @@ meAction act = "\001ACTION " <> act <> "\001"
 
 runParser :: Parser a -> Text -> Maybe a
 runParser p t = discardError $ parseOnly p t
-  where discardError = \case
-          Left _ -> Nothing
-          Right b -> Just b
+
+discardError :: Either a b -> Maybe b
+discardError = \case
+  Left  _ -> Nothing
+  Right b -> Just b

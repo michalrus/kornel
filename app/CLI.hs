@@ -14,6 +14,7 @@ data Config = Config
               , usingSSL :: Bool
               , nick :: Text
               , nickservPasswordFile :: Maybe FilePath
+              , cleverBotApiKeyFile :: Maybe FilePath
               , channel :: Text
               }
 
@@ -28,6 +29,7 @@ configParser = Config
   <*> switch (long "ssl")
   <*> (pack <$> strOption (long "nick"))
   <*> (optional $ strOption (long "nickserv-password-file"))
+  <*> (optional $ strOption (long "cleverbot-api-key-file"))
   <*> (pack <$> strOption (long "channel"))
 
 readConfig :: IO Config
