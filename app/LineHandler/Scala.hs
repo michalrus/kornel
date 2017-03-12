@@ -5,7 +5,7 @@ module LineHandler.Scala
 import LineHandler
 import CLI as C
 import qualified IrcParser as I
-import Data.Maybe (isNothing)
+import Control.Applicative
 import Data.Semigroup ((<>))
 import Data.Text as T
 import Data.Attoparsec.Text as P
@@ -29,14 +29,25 @@ handle' state = Handler $ \cfg -> \case
         let r = (\to -> I.Privmsg to msg) <$> lastReplyTo state
         return (r, handle' state)
 
-    | otherwise -> do
-        let expr = runParser cmdParser msg
-        let replyTo = if (target /= C.nick cfg) then target else I.nick origin
-        let nextState = if isNothing expr then state else state { lastReplyTo = Just replyTo }
-        let toBot e = I.Privmsg scalabotNick ("! " <> e)
-        return (toBot <$> expr, handle' nextState)
+    | otherwise ->
+        case runParser cmdParser msg of
+          Just (command, expr) -> do
+            let replyTo = if (target /= C.nick cfg) then target else I.nick origin
+            return (Just $ I.Privmsg scalabotNick $ command <> " " <> expr,
+                    handle' $ state { lastReplyTo = Just replyTo })
+
+          _ -> return (Nothing, handle' state)
 
   _ -> return (Nothing, handle' state)
 
-cmdParser :: Parser Text
-cmdParser = skipSpace *> (asciiCI "@scala") *> skip isHorizontalSpace *> takeText
+cmdParser :: Parser (Text, Text)
+cmdParser = do
+  skipSpace
+  asciiCI "@scala" *> spc
+  command
+    <-  ((asciiCI ":type"  <|> asciiCI ":t") *> spc *> pure "!type")
+    <|> (pure "!")
+  expr <- takeText
+  return (command, expr)
+  where
+    spc = skip isHorizontalSpace
