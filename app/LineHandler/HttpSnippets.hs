@@ -36,7 +36,7 @@ getSnippet atMost url = do
   response <- withResponse request manager $ \r ->
     brReadSome (responseBody r) atMost
   let title = findTitle $ LBS.toStrict response
-  return $ decodeUtf8 <$> title
+  return $ strip <$> decodeHtmlEntities <$> decodeUtf8 <$> title
 
 findTitle :: ByteString -> Maybe ByteString
 findTitle haystack =

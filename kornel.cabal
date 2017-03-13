@@ -54,6 +54,7 @@ executable kornel-exe
                      , aeson
                      , regex-base
                      , regex-pcre
+                     , html-entities
   other-modules:       CLI
                      , LineHandler
                      , LineHandler.Chatter

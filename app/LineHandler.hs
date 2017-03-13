@@ -11,6 +11,7 @@ module LineHandler
        , discardException
        , discardError
        , fakeChromium
+       , decodeHtmlEntities
        )
        where
 
@@ -19,11 +20,14 @@ import Data.Attoparsec.Text as P
 import Data.Profunctor
 import Data.Monoid ((<>))
 import Data.Text
+import qualified Data.Text.Lazy as TL
 import System.IO
 import System.Random (randomRIO)
 import qualified CLI as C
 import qualified IrcParser as I
 import Network.HTTP.Client (Request, requestHeaders)
+import HTMLEntities.Decoder (htmlEncodedText)
+import qualified Data.Text.Lazy.Builder as TLB
 
 data Handler a b = Handler (C.Config -> a -> IO (Maybe b, Handler a b))
 
@@ -94,3 +98,6 @@ fakeChromium r =
                        , ("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36")
                        ]
     }
+
+decodeHtmlEntities :: Text -> Text
+decodeHtmlEntities = TL.toStrict . TLB.toLazyText . htmlEncodedText

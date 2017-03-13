@@ -49,7 +49,7 @@ data GResult = GResult
 firstResult :: BS.ByteString -> Maybe GResult
 firstResult input =
   case parts of
-    _ : u : t : [] -> Just $ GResult { url = decodeUtf8 u, title = decodeUtf8 t }
+    _ : u : t : [] -> Just $ GResult { url = strip $ decodeUtf8 u, title = strip $ decodeHtmlEntities $ decodeUtf8 t }
     _              -> Nothing
   where
     first :: ByteString = input =~ ("(?i)<h3.*?</h3>" :: ByteString)
