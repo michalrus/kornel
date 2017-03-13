@@ -31,9 +31,7 @@ google query = do
   manager <- HTTPS.newTlsManager
   let request
         = setRequestManager manager
-        $ addRequestHeader "Accept-Language" "en-US,en;q=0.8"
-        $ addRequestHeader "Accept" "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8"
-        $ addRequestHeader "User-Agent" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36"
+        $ fakeChromium
         $ setRequestQueryString [ ("q",  Just $ encodeUtf8 query)
                                 , ("hl", Just "en")
                                 , ("ie", Just "UTF-8")

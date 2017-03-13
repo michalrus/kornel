@@ -10,6 +10,7 @@ module LineHandler
        , runParser
        , discardException
        , discardError
+       , fakeChromium
        )
        where
 
@@ -22,6 +23,7 @@ import System.IO
 import System.Random (randomRIO)
 import qualified CLI as C
 import qualified IrcParser as I
+import Network.HTTP.Client (Request, requestHeaders)
 
 data Handler a b = Handler (C.Config -> a -> IO (Maybe b, Handler a b))
 
@@ -84,3 +86,11 @@ discardError :: Either a b -> Maybe b
 discardError = \case
   Left  _ -> Nothing
   Right b -> Just b
+
+fakeChromium :: Request -> Request
+fakeChromium r =
+  r { requestHeaders = [ ("Accept-Language", "en-US,en;q=0.8")
+                       , ("Accept",          "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8")
+                       , ("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36")
+                       ]
+    }

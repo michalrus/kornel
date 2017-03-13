@@ -15,6 +15,7 @@ data Config = Config
               , nick :: Text
               , nickservPasswordFile :: Maybe FilePath
               , cleverBotApiKeyFile :: Maybe FilePath
+              , httpSnippetsFetchMax :: Int
               , channel :: Text
               , verbose :: Bool
               }
@@ -31,6 +32,9 @@ configParser = Config
   <*> (pack <$> strOption (long "nick"))
   <*> (optional $ strOption (long "nickserv-password-file"))
   <*> (optional $ strOption (long "cleverbot-api-key-file"))
+  <*> option auto (long "http-snippets-fetch-max"
+                   <> metavar "BYTES"
+                   <> help "This many bytes will be read from each document, until a <title/> is found.")
   <*> (pack <$> strOption (long "channel"))
   <*> switch (long "verbose")
 
