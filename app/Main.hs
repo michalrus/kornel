@@ -71,7 +71,7 @@ runSession cfg ctx = do
                                    Prelude.take n xs ++ [x] ++ Prelude.drop (n + 1) xs
                                  else xs
             in keepProcessingWith $ editNth handlerId new handlers
-          QClientLine cmd -> sendCommand con cmd >> keepProcessingWith handlers
+          QClientLine cmd -> sendCommand (verbose cfg) con cmd >> keepProcessingWith handlers
           QServerLine ln -> do
             forM_ ([0..] `Prelude.zip` handlers) $ \(handlerId, Handler handler) -> do
               _ <- forkIO $ do
@@ -112,7 +112,7 @@ login cfg ctx = do
     \path -> do
       pw <- strip <$> TIO.readFile path
       return $ I.Privmsg "NickServ" (append "IDENTIFY " $ pw)
-  mapM_ (sendCommand con) $
+  mapM_ (sendCommand (verbose cfg) con) $
     [ I.Nick $ nick cfg
     , I.User (nick cfg) "-" "-" "https://github.com/michalrus/kornel"
     , I.Join [channel cfg]
@@ -132,9 +132,9 @@ processRawLine con =
     where
       isEndOfLine c = c == '\r' || c == '\n'
 
-sendCommand :: Connection -> I.IrcCommand -> IO ()
-sendCommand con cmd = do
-  putStrLn $ "-> " ++ show cmd
+sendCommand :: Bool -> Connection -> I.IrcCommand -> IO ()
+sendCommand verbosely con cmd = do
+  when verbosely $ putStrLn $ "-> " ++ show cmd
   connectionPut con $ encodeUtf8 $ append (I.showCommand cmd) "\r\n"
 
 handlePing :: LineHandler
@@ -143,7 +143,7 @@ handlePing = Handler $ \_ -> \case
   _                      -> return (Nothing,         handlePing)
 
 handleLogging :: LineHandler
-handleLogging = Handler $ \_ -> \case
+handleLogging = Handler $ \cfg -> \case
   I.IrcLine origin msg -> do
-    putStrLn $ "<- " ++ show origin ++ " - " ++ show msg
+    when (verbose cfg) $ putStrLn $ "<- " ++ show origin ++ " - " ++ show msg
     return (Nothing, handleLogging)

@@ -16,6 +16,7 @@ data Config = Config
               , nickservPasswordFile :: Maybe FilePath
               , cleverBotApiKeyFile :: Maybe FilePath
               , channel :: Text
+              , verbose :: Bool
               }
 
 configParser :: Parser Config
@@ -31,6 +32,7 @@ configParser = Config
   <*> (optional $ strOption (long "nickserv-password-file"))
   <*> (optional $ strOption (long "cleverbot-api-key-file"))
   <*> (pack <$> strOption (long "channel"))
+  <*> switch (long "verbose")
 
 readConfig :: IO Config
 readConfig = execParser opts
