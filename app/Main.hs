@@ -8,6 +8,7 @@ import Control.Monad
 import Control.Monad.Loops (whileJust_)
 import Control.Concurrent (forkIO, threadDelay, killThread)
 import Control.Concurrent.Chan
+import qualified Data.ByteString as BS
 import Data.Maybe (maybeToList)
 import Data.Text as Text -- bug in Intero?
 import Data.Text.Encoding (decodeUtf8With, encodeUtf8)
@@ -135,7 +136,9 @@ processRawLine con =
 sendCommand :: Bool -> Connection -> I.IrcCommand -> IO ()
 sendCommand verbosely con cmd = do
   when verbosely $ putStrLn $ "-> " ++ show cmd
-  connectionPut con $ encodeUtf8 $ append (I.showCommand cmd) "\r\n"
+  connectionPut con $ BS.append bytes "\r\n"
+  where
+    bytes = BS.take 510 $ encodeUtf8 $ I.showCommand cmd
 
 handlePing :: LineHandler
 handlePing = Handler $ \_ -> \case
