@@ -15,6 +15,8 @@ data Config = Config
               , nick :: Text
               , nickservPasswordFile :: Maybe FilePath
               , cleverBotApiKeyFile :: Maybe FilePath
+              , haskellBotNicks :: [Text]
+              , scalaBotNicks :: [Text]
               , httpSnippetsFetchMax :: Int
               , channel :: Text
               , verbose :: Bool
@@ -32,6 +34,10 @@ configParser = Config
   <*> (pack <$> strOption (long "nick"))
   <*> (optional $ strOption (long "nickserv-password-file"))
   <*> (optional $ strOption (long "cleverbot-api-key-file"))
+  <*> (splitOn "," . pack <$> (strOption (long "haskell-bot-nicks"
+                                          <> metavar "NICK1[,…]")))
+  <*> (splitOn "," . pack <$> (strOption (long "scala-bot-nicks"
+                                          <> metavar "NICK1[,…]")))
   <*> option auto (long "http-snippets-fetch-max"
                    <> metavar "BYTES"
                    <> help "This many bytes will be read from each document, until a <title/> is found.")

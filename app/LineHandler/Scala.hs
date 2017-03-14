@@ -3,6 +3,7 @@ module LineHandler.Scala
        ) where
 
 import LineHandler
+import CLI as C
 import Control.Applicative
 import Control.Monad
 import Data.Semigroup ((<>))
@@ -10,7 +11,7 @@ import Data.Attoparsec.Text as P
 import qualified LineHandler.BotProxy as Proxy
 
 handle :: LineHandler
-handle = Proxy.handle "multibot_" $ do
+handle = Proxy.handle C.scalaBotNicks $ do
   skipSpace
   asciiCI "@scala" *> spc
   command

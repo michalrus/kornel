@@ -1,27 +1,33 @@
 module LineHandler.BotProxy
        ( handle
+       , nextElem
        ) where
 
 import LineHandler
 import CLI as C
 import qualified IrcParser as I
+import Control.Monad
+import Control.Monad.Zip
+import Data.Maybe (listToMaybe)
 import Data.Text as T
 import Data.Attoparsec.Text as P
 
 data HState = HState
               { lastReplyTo :: Maybe Text
-              }
+              , lastBotNick :: Maybe Text
+              , lastBotInquiry :: Maybe Text
+              } deriving (Show)
 
-handle :: Text -> Parser Text -> LineHandler
-handle botNick commandParser =
-  handle' $ HState Nothing
+handle :: (Config -> [Text]) -> Parser Text -> LineHandler
+handle botNicks commandParser =
+  handle' $ HState Nothing Nothing Nothing
   where
     handle' :: HState -> LineHandler
     handle' state = Handler $ \cfg -> \case
 
       I.IrcLine (Just origin) (I.Privmsg target msg)
 
-        | I.nick origin == botNick -> do
+        | elem (I.nick origin) (botNicks cfg) -> do
             let r = (\to -> I.Privmsg to msg) <$> lastReplyTo state
             return (r, handle' state)
 
@@ -29,9 +35,37 @@ handle botNick commandParser =
             case runParser commandParser msg of
               Just (command) -> do
                 let replyTo = if (target /= C.nick cfg) then target else I.nick origin
-                return (Just $ I.Privmsg botNick $ command,
-                        handle' $ state { lastReplyTo = Just replyTo })
+                let bot = (listToMaybe $ botNicks cfg)
+                return ((\to -> I.Privmsg to command) <$> bot,
+                        handle' $ state { lastReplyTo = Just replyTo
+                                        , lastBotNick = bot
+                                        , lastBotInquiry = Just command
+                                        })
 
               _ -> return (Nothing, handle' state)
 
+      I.IrcLine _ (I.NumericCommand 401 (_ : target : _))
+        | Just target == lastBotNick state -> do
+            let nextNick = nextElem (botNicks cfg) target
+            case nextNick `mzip` (lastBotInquiry state) of
+              Just (to, command) ->
+                return (Just $ I.Privmsg to command,
+                        handle' state { lastBotNick = Just to
+                                      })
+              Nothing ->
+                return (Nothing,
+                        handle' state { lastReplyTo = Nothing
+                                      , lastBotNick = Nothing
+                                      , lastBotInquiry = Nothing
+                                      })
+
       _ -> return (Nothing, handle' state)
+
+nextElem :: Eq a => [a] -> a -> Maybe a
+nextElem xs after
+  | notElem after xs = listToMaybe xs
+  | otherwise
+    = listToMaybe
+    $ mfilter ((/=) after)
+    $ Prelude.dropWhile ((/=) after)
+    $ xs

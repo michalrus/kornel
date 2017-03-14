@@ -3,6 +3,7 @@ module LineHandler.Haskell
        ) where
 
 import LineHandler
+import CLI as C
 import Control.Applicative
 import Control.Monad
 import Data.Semigroup ((<>))
@@ -10,7 +11,7 @@ import Data.Attoparsec.Text as P
 import qualified LineHandler.BotProxy as Proxy
 
 handle :: LineHandler
-handle = Proxy.handle "lambdabot" $ do
+handle = Proxy.handle C.haskellBotNicks $ do
   skipSpace
   (asciiCI "@haskell" <|> asciiCI "@hs") *> spc
   command
