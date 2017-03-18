@@ -1,7 +1,13 @@
+
 module IrcParser
        ( IrcLine(..)
        , IrcCommand(..)
-       , Hostmask(..)
+       , Origin(..)
+       , Username(..)
+       , Realname(..)
+       , Hostname(..)
+       , Target(..)
+       , isChannel
        , readMessage
        , showCommand
        ) where
@@ -12,26 +18,34 @@ import Data.Text as T
 import Data.Attoparsec.Text as P
 import Text.Printf (printf)
 
-data Hostmask = Hostmask
-                 { nick :: Text
-                 , hostmask :: Maybe Text
-                 , host :: Maybe Text
-                 }
-               deriving (Show, Eq)
+newtype Target   = Target   { toText :: Text } deriving (Show, Eq)
+newtype Username = Username { toText :: Text } deriving (Show, Eq)
+newtype Realname = Realname { toText :: Text } deriving (Show, Eq)
+newtype Hostname = Hostname { toText :: Text } deriving (Show, Eq)
 
-data IrcLine = IrcLine (Maybe Hostmask) IrcCommand
+isChannel :: Target -> Bool
+isChannel (Target s) = Prelude.any (flip isPrefixOf s) ["#", "!", "&"]
+
+data Origin = Origin
+              { nick :: Target
+              , user :: Maybe Username
+              , host :: Maybe Hostname
+              }
+            deriving (Show, Eq)
+
+data IrcLine = IrcLine (Maybe Origin) IrcCommand
   deriving (Show, Eq)
 
 data IrcCommand
   = Ping Text
   | Pong Text
-  | Nick Text
-  | User Text Text Text Text
-  | Join [Text]
-  | Part [Text] (Maybe Text)
-  | Mode Text Text [Text]
-  | Notice Text Text
-  | Privmsg Text Text
+  | Nick Target
+  | User Username Realname
+  | Join [Target]
+  | Part [Target] (Maybe Text)
+  | Mode Target Text [Text]
+  | Notice Target Text
+  | Privmsg Target Text
   | StringCommand Text [Text]
   | NumericCommand Integer [Text]
   deriving (Show, Eq)
@@ -43,16 +57,26 @@ showCommand :: IrcCommand -> Text
 showCommand = sanitize <$> \case
   Ping t             -> "PING :" <> t
   Pong t             -> "PONG :" <> t
-  Nick n             -> "NICK " <> n
-  User user a b real -> "USER " <> user <> " " <> a <> " " <> b <> " :" <> real
-  Join chs           -> "JOIN " <> intercalate "," chs
-  Part chs reason    -> "PART " <> intercalate "," chs <> maybe "" (append " :") reason
-  Mode t m args      -> "MODE " <> t <> " " <> m <> " " <> intercalate " " args
-  Notice t m         -> "NOTICE " <> t <> " :" <> m
-  Privmsg t m        -> "PRIVMSG " <> t <> " :" <> m
-  StringCommand  name args -> name                        <> " " <> (intercalate " " $ colonize args)
-  NumericCommand name args -> (pack $ printf "%03i" name) <> " " <> (intercalate " " $ colonize args)
+  Nick (Target n)    -> "NICK " <> n
+  User
+    (Username u)
+    (Realname r)     -> "USER " <> u <> " - - :" <> r
+  Join chs           -> "JOIN " <> intercalate "," ((toText :: Target -> Text) <$> chs)
+  Part chs reason    -> "PART " <> intercalate "," ((toText :: Target -> Text) <$> chs)
+                                <> maybe "" (append " :") reason
+  Mode
+    (Target t) m
+    args             -> "MODE " <> t <> " " <> m <> " " <> intercalate " " args
+  Notice
+    (Target t) m     -> "NOTICE " <> t <> " :" <> m
+  Privmsg
+    (Target t) m     -> "PRIVMSG " <> t <> " :" <> m
+  StringCommand
+    name args        -> name                        <> " " <> (intercalate " " $ colonize args)
+  NumericCommand
+    name args        -> (pack $ printf "%03i" name) <> " " <> (intercalate " " $ colonize args)
   where
+    sanitize :: Text -> Text
     sanitize input =
         replace "\n" "\\LF"
       $ replace "\r" "\\CR"
@@ -62,16 +86,16 @@ showCommand = sanitize <$> \case
 
 parseMessage :: Parser IrcLine
 parseMessage =
-  IrcLine <$> option Nothing (Just <$> (skipMany space *> char ':' *> parseHostmask))
+  IrcLine <$> option Nothing (Just <$> (skipMany space *> char ':' *> parseOrigin))
           <*> parseCommand
 
-parseHostmask :: Parser Hostmask
-parseHostmask = full <|> nickOnly
+parseOrigin :: Parser Origin
+parseOrigin = full <|> nickOnly
   where
-    full     = Hostmask <$> (P.takeTill $ \c -> isWhitespace c || c == '!') <* char '!'
-                        <*> (Just <$> (P.takeTill $ \c -> isWhitespace c || c == '@')) <* char '@'
-                        <*> (Just <$> (P.takeTill isWhitespace))
-    nickOnly = Hostmask <$> P.takeTill isWhitespace <*> pure Nothing <*> pure Nothing
+    full     = Origin <$> (Target <$> (P.takeTill $ \c -> isWhitespace c || c == '!')) <* char '!'
+                      <*> (Just . Username <$> (P.takeTill $ \c -> isWhitespace c || c == '@')) <* char '@'
+                      <*> (Just . Hostname <$> (P.takeTill isWhitespace))
+    nickOnly = Origin <$> (Target <$> P.takeTill isWhitespace) <*> pure Nothing <*> pure Nothing
 
 parseCommand :: Parser IrcCommand
 parseCommand =
@@ -89,17 +113,17 @@ parseCommand =
 
     stringCmd :: Parser IrcCommand
     stringCmd = do
-      cmd <- (takeWhile1 $ inClass "A-Za-z0-9_")
+      cmd <- T.toUpper <$> (takeWhile1 $ inClass "A-Za-z0-9_")
       case cmd of
         "PING"    -> Ping    <$> argument
         "PONG"    -> Pong    <$> argument
-        "NICK"    -> Nick    <$> argument
-        "USER"    -> User    <$> argument <*> argument <*> argument <*> argument
-        "JOIN"    -> Join    <$> splitOn "," <$> argument
-        "MODE"    -> Mode    <$> argument <*> argument <*> many argument
-        "PART"    -> Part    <$> splitOn "," <$> argument <*> optionalArg
-        "NOTICE"  -> Notice  <$> argument <*> argument
-        "PRIVMSG" -> Privmsg <$> argument <*> argument
+        "NICK"    -> Nick    <$> Target <$> argument
+        "USER"    -> User    <$> Username <$> argument <*> (Realname <$> (argument *> argument *> argument))
+        "JOIN"    -> Join    <$> fmap Target . splitOn "," <$> argument
+        "MODE"    -> Mode    <$> Target <$> argument <*> argument <*> many argument
+        "PART"    -> Part    <$> fmap Target . splitOn "," <$> argument <*> optionalArg
+        "NOTICE"  -> Notice  <$> Target <$> argument <*> argument
+        "PRIVMSG" -> Privmsg <$> Target <$> argument <*> argument
         _         -> StringCommand cmd <$> many argument
 
 isWhitespace :: Char -> Bool

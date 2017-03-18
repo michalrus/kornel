@@ -7,18 +7,19 @@ import Network.Socket (HostName, PortNumber)
 import Data.Text
 import Options.Applicative
 import Data.Semigroup ((<>))
+import qualified IrcParser as I
 
 data Config = Config
               { serverHost :: HostName
               , serverPort :: PortNumber
               , usingSSL :: Bool
-              , nick :: Text
+              , nick :: I.Target
               , nickservPasswordFile :: Maybe FilePath
               , cleverBotApiKeyFile :: Maybe FilePath
-              , haskellBotNicks :: [Text]
-              , scalaBotNicks :: [Text]
+              , haskellBotNicks :: [I.Target]
+              , scalaBotNicks :: [I.Target]
               , httpSnippetsFetchMax :: Int
-              , channel :: Text
+              , channels :: [I.Target]
               , verbose :: Bool
               }
 
@@ -31,18 +32,21 @@ configParser = Config
                    <> metavar "PORT"
                    <> help "Port on the HOST")
   <*> switch (long "ssl")
-  <*> (pack <$> strOption (long "nick"))
+  <*> option target (long "nick")
   <*> (optional $ strOption (long "nickserv-password-file"))
   <*> (optional $ strOption (long "cleverbot-api-key-file"))
-  <*> (splitOn "," . pack <$> (strOption (long "haskell-bot-nicks"
-                                          <> metavar "NICK1[,…]")))
-  <*> (splitOn "," . pack <$> (strOption (long "scala-bot-nicks"
-                                          <> metavar "NICK1[,…]")))
+  <*> option targets (long "haskell-bot-nicks" <> metavar "NICK1[,…]")
+  <*> option targets (long "scala-bot-nicks" <> metavar "NICK1[,…]")
   <*> option auto (long "http-snippets-fetch-max"
                    <> metavar "BYTES"
                    <> help "This many bytes will be read from each document, until a <title/> is found.")
-  <*> (pack <$> strOption (long "channel"))
+  <*> option targets (long "channels" <> metavar "CHANNEL1[,…]")
   <*> switch (long "verbose")
+  where
+    text = pack <$> str
+    texts = splitOn "," <$> text
+    target = I.Target <$> text
+    targets = fmap I.Target <$> texts
 
 readConfig :: IO Config
 readConfig = execParser opts

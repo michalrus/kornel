@@ -13,12 +13,12 @@ import Data.Text as T
 import Data.Attoparsec.Text as P
 
 data HState = HState
-              { lastReplyTo :: Maybe Text
-              , lastBotNick :: Maybe Text
+              { lastReplyTo :: Maybe I.Target
+              , lastBotNick :: Maybe I.Target
               , lastBotInquiry :: Maybe Text
               } deriving (Show)
 
-handle :: (Config -> [Text]) -> Parser Text -> LineHandler
+handle :: (Config -> [I.Target]) -> Parser Text -> LineHandler
 handle botNicks commandParser =
   handle' $ HState Nothing Nothing Nothing
   where
@@ -34,7 +34,7 @@ handle botNicks commandParser =
         | otherwise ->
             case runParser commandParser msg of
               Just (command) -> do
-                let replyTo = if (target /= C.nick cfg) then target else I.nick origin
+                let replyTo = if I.isChannel target then target else I.nick origin
                 let bot = (listToMaybe $ botNicks cfg)
                 return ((\to -> I.Privmsg to command) <$> bot,
                         handle' $ state { lastReplyTo = Just replyTo
@@ -45,8 +45,8 @@ handle botNicks commandParser =
               _ -> return (Nothing, handle' state)
 
       I.IrcLine _ (I.NumericCommand 401 (_ : target : _))
-        | Just target == lastBotNick state -> do
-            let nextNick = nextElem (botNicks cfg) target
+        | (Just . I.Target) target == lastBotNick state -> do
+            let nextNick = nextElem (botNicks cfg) $ I.Target target
             case nextNick `mzip` (lastBotInquiry state) of
               Just (to, command) ->
                 return (Just $ I.Privmsg to command,

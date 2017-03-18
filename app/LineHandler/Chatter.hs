@@ -31,17 +31,22 @@ data CleverbotResponse = CleverbotResponse
 instance FromJSON CleverbotResponse
 
 handle :: LineHandler
-handle = onlyPrivmsg $ handleP $ HState Nothing Nothing
-
-handleP :: HState -> PrivmsgHandler
-handleP state = Handler $ \cfg (hostmask, _, msg) ->
-  if (toUpper $ nick cfg) `isInfixOf` (toUpper $ msg) then do
-    let question = fromMaybe msg $ runParser (noHighlight $ nick cfg) msg
-    stateWithKey <- tryToLoadKey cfg state
-    (nextState, answer) <- (fromMaybe (state, Nothing)) <$> (discardException $ chatter stateWithKey question)
-    let highlight t = (I.nick hostmask) <> ": " <> t
-    return (highlight <$> answer, handleP nextState)
-  else return (Nothing, handleP state)
+handle = onlyPrivmsg $ handle' $ HState Nothing Nothing
+  where
+    handle' :: HState -> PrivmsgHandler
+    handle' state = Handler $ \cfg (origin, _, msg) ->
+      let
+        isToMe = (toUpper $ myNick) `isInfixOf` (toUpper $ msg)
+                   where myNick = I.toText (nick cfg :: I.Target)
+        highlight t = theirNick <> ": " <> t
+                        where theirNick = I.toText (I.nick origin :: I.Target)
+      in if isToMe then do
+        let question = fromMaybe msg $ runParser (stripHighlight $ nick cfg) msg
+        stateWithKey <- tryToLoadKey cfg state
+        (nextState, answer) <- (fromMaybe (state, Nothing))
+                                 <$> (discardException $ chatter stateWithKey question)
+        return (highlight <$> answer, handle' nextState)
+      else return (Nothing, handle' state)
 
 tryToLoadKey :: Config -> HState -> IO HState
 tryToLoadKey cfg state = if isJust $ apiKey state then return state else do
@@ -50,10 +55,12 @@ tryToLoadKey cfg state = if isJust $ apiKey state then return state else do
                          $ \p -> strip <$> TIO.readFile p)
   return $ state { apiKey = cbApiKey }
 
-noHighlight :: Text -> Parser Text
-noHighlight myNick =
+stripHighlight :: I.Target -> Parser Text
+stripHighlight tMyNick =
   skipSpace *> asciiCI myNick *> skipSpace *> optional (char ':' <|> char ',')
   *> skip isHorizontalSpace *> takeText
+    where
+      myNick = I.toText (tMyNick :: I.Target)
 
 chatter :: HState -> Text -> IO (HState, Maybe Text)
 chatter state msg = do

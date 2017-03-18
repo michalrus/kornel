@@ -112,11 +112,12 @@ login cfg ctx = do
   nickservCmd <- flip traverse (nickservPasswordFile cfg) $
     \path -> do
       pw <- strip <$> TIO.readFile path
-      return $ I.Privmsg "NickServ" (append "IDENTIFY " $ pw)
+      return $ I.Privmsg (I.Target "NickServ") (append "IDENTIFY " $ pw)
   mapM_ (sendCommand (verbose cfg) con) $
     [ I.Nick $ nick cfg
-    , I.User (nick cfg) "-" "-" "https://github.com/michalrus/kornel"
-    , I.Join [channel cfg]
+    , I.User (I.Username $ (let (I.Target t) = nick cfg in t))
+             (I.Realname "https://github.com/michalrus/kornel")
+    , I.Join $ channels cfg
     ] ++ maybeToList nickservCmd
   return con
 

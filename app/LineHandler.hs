@@ -50,7 +50,7 @@ emptyHandler = Handler $ (\_ _ -> return (Nothing, emptyHandler))
 type LineHandler = Handler I.IrcLine I.IrcCommand
 
 -- | If you only want to react with text in response to text messages, use this.
-type PrivmsgHandler = Handler (I.Hostmask, Text, Text) Text
+type PrivmsgHandler = Handler (I.Origin, I.Target, Text) Text
 
 -- FIXME: how to use Profunctor’s dimap to implement this?
 onlyPrivmsg :: PrivmsgHandler -> LineHandler
@@ -58,7 +58,7 @@ onlyPrivmsg (Handler handler) =
   Handler $ \cfg -> \case
     I.IrcLine (Just origin) (I.Privmsg target msg) -> do
       (response, newHandler) <- handler cfg (origin, target, msg)
-      let replyTo = if (target /= C.nick cfg) then target else I.nick origin
+      let replyTo = if I.isChannel target then target else I.nick origin
       let realResponse = I.Privmsg replyTo <$> response
       return (realResponse, onlyPrivmsg newHandler)
     _ -> return (Nothing, onlyPrivmsg $ Handler handler)
