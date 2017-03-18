@@ -37,9 +37,9 @@ handle = onlyPrivmsg $ handle' $ HState Nothing Nothing
     handle' state = Handler $ \cfg (origin, _, msg) ->
       let
         isToMe = (toUpper $ myNick) `isInfixOf` (toUpper $ msg)
-                   where myNick = I.toText (nick cfg :: I.Target)
+                   where myNick = I.underlying $ nick cfg
         highlight t = theirNick <> ": " <> t
-                        where theirNick = I.toText (I.nick origin :: I.Target)
+                        where theirNick :: Text = I.underlying $ I.nick origin
       in if isToMe then do
         let question = fromMaybe msg $ runParser (stripHighlight $ nick cfg) msg
         stateWithKey <- tryToLoadKey cfg state
@@ -56,11 +56,9 @@ tryToLoadKey cfg state = if isJust $ apiKey state then return state else do
   return $ state { apiKey = cbApiKey }
 
 stripHighlight :: I.Target -> Parser Text
-stripHighlight tMyNick =
-  skipSpace *> asciiCI myNick *> skipSpace *> optional (char ':' <|> char ',')
+stripHighlight myNick =
+  skipSpace *> asciiCI (I.underlying myNick) *> skipSpace *> optional (char ':' <|> char ',')
   *> skip isHorizontalSpace *> takeText
-    where
-      myNick = I.toText (tMyNick :: I.Target)
 
 chatter :: HState -> Text -> IO (HState, Maybe Text)
 chatter state msg = do

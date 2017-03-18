@@ -1,8 +1,8 @@
-
 module IrcParser
        ( IrcLine(..)
        , IrcCommand(..)
        , Origin(..)
+       , IsNewtype(..)
        , Username(..)
        , Realname(..)
        , Hostname(..)
@@ -18,10 +18,17 @@ import Data.Text as T
 import Data.Attoparsec.Text as P
 import Text.Printf (printf)
 
-newtype Target   = Target   { toText :: Text } deriving (Show, Eq)
-newtype Username = Username { toText :: Text } deriving (Show, Eq)
-newtype Realname = Realname { toText :: Text } deriving (Show, Eq)
-newtype Hostname = Hostname { toText :: Text } deriving (Show, Eq)
+class IsNewtype a u where underlying :: a -> u
+
+newtype Target   = Target   Text deriving (Show, Eq)
+newtype Username = Username Text deriving (Show, Eq)
+newtype Realname = Realname Text deriving (Show, Eq)
+newtype Hostname = Hostname Text deriving (Show, Eq)
+
+instance IsNewtype Target   Text where underlying (Target t)   = t
+instance IsNewtype Username Text where underlying (Username t) = t
+instance IsNewtype Realname Text where underlying (Realname t) = t
+instance IsNewtype Hostname Text where underlying (Hostname t) = t
 
 isChannel :: Target -> Bool
 isChannel (Target s) = Prelude.any (flip isPrefixOf s) ["#", "!", "&"]
@@ -61,8 +68,8 @@ showCommand = sanitize <$> \case
   User
     (Username u)
     (Realname r)     -> "USER " <> u <> " - - :" <> r
-  Join chs           -> "JOIN " <> intercalate "," ((toText :: Target -> Text) <$> chs)
-  Part chs reason    -> "PART " <> intercalate "," ((toText :: Target -> Text) <$> chs)
+  Join chs           -> "JOIN " <> intercalate "," (underlying <$> chs)
+  Part chs reason    -> "PART " <> intercalate "," (underlying <$> chs)
                                 <> maybe "" (append " :") reason
   Mode
     (Target t) m
