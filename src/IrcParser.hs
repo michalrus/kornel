@@ -2,7 +2,6 @@ module IrcParser
        ( IrcLine(..)
        , IrcCommand(..)
        , Origin(..)
-       , IsNewtype(..)
        , Username(..)
        , Realname(..)
        , Hostname(..)
@@ -12,23 +11,18 @@ module IrcParser
        , showCommand
        ) where
 
+import GHC.Generics
 import Control.Applicative
+import Control.Newtype as N
 import Data.Semigroup ((<>))
 import Data.Text as T
 import Data.Attoparsec.Text as P
 import Text.Printf (printf)
 
-class IsNewtype a u where underlying :: a -> u
-
-newtype Target   = Target   Text deriving (Show, Eq)
-newtype Username = Username Text deriving (Show, Eq)
-newtype Realname = Realname Text deriving (Show, Eq)
-newtype Hostname = Hostname Text deriving (Show, Eq)
-
-instance IsNewtype Target   Text where underlying (Target t)   = t
-instance IsNewtype Username Text where underlying (Username t) = t
-instance IsNewtype Realname Text where underlying (Realname t) = t
-instance IsNewtype Hostname Text where underlying (Hostname t) = t
+newtype Target   = Target   Text deriving (Show, Eq, Generic) ; instance Newtype Target
+newtype Username = Username Text deriving (Show, Eq, Generic) ; instance Newtype Username
+newtype Realname = Realname Text deriving (Show, Eq, Generic) ; instance Newtype Realname
+newtype Hostname = Hostname Text deriving (Show, Eq, Generic) ; instance Newtype Hostname
 
 isChannel :: Target -> Bool
 isChannel (Target s) = Prelude.any (flip isPrefixOf s) ["#", "!", "&"]
@@ -68,8 +62,8 @@ showCommand = sanitize <$> \case
   User
     (Username u)
     (Realname r)     -> "USER " <> u <> " - - :" <> r
-  Join chs           -> "JOIN " <> intercalate "," (underlying <$> chs)
-  Part chs reason    -> "PART " <> intercalate "," (underlying <$> chs)
+  Join chs           -> "JOIN " <> intercalate "," (N.unpack <$> chs)
+  Part chs reason    -> "PART " <> intercalate "," (N.unpack <$> chs)
                                 <> maybe "" (append " :") reason
   Mode
     (Target t) m
@@ -79,9 +73,9 @@ showCommand = sanitize <$> \case
   Privmsg
     (Target t) m     -> "PRIVMSG " <> t <> " :" <> m
   StringCommand
-    name args        -> name                        <> " " <> (intercalate " " $ colonize args)
+    name args        -> name                          <> " " <> (intercalate " " $ colonize args)
   NumericCommand
-    name args        -> (pack $ printf "%03i" name) <> " " <> (intercalate " " $ colonize args)
+    name args        -> (T.pack $ printf "%03i" name) <> " " <> (intercalate " " $ colonize args)
   where
     sanitize :: Text -> Text
     sanitize input =

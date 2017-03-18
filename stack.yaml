@@ -5,6 +5,7 @@ packages:
 
 extra-deps:
 - profunctors-5.2
+- newtype-generics-0.5
 - optparse-applicative-0.13.1.0
 - connection-0.2.7
 - attoparsec-0.13.1.0

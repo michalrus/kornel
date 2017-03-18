@@ -19,6 +19,7 @@ library
   build-depends:       base >= 4.7 && < 5
                      , text
                      , attoparsec
+                     , newtype-generics
   ghc-options:         -Wall -Werror
   default-extensions:  ScopedTypeVariables
                      , OverloadedStrings
@@ -26,7 +27,6 @@ library
                      , DeriveGeneric
                      , DeriveFunctor
                      , DuplicateRecordFields
-                     , MultiParamTypeClasses
   default-language:    Haskell2010
 
 executable kornel-exe
@@ -39,10 +39,10 @@ executable kornel-exe
                      , DeriveGeneric
                      , DeriveFunctor
                      , DuplicateRecordFields
-                     , MultiParamTypeClasses
   build-depends:       base
                      , kornel
                      , profunctors
+                     , newtype-generics
                      , text
                      , optparse-applicative
                      , network

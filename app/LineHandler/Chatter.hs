@@ -6,6 +6,7 @@ import GHC.Generics
 import LineHandler
 import Control.Applicative
 import Control.Monad
+import Control.Newtype as N
 import Data.Aeson
 import Data.Attoparsec.Text as P
 import Data.Maybe (fromMaybe, maybe, isJust)
@@ -37,9 +38,9 @@ handle = onlyPrivmsg $ handle' $ HState Nothing Nothing
     handle' state = Handler $ \cfg (origin, _, msg) ->
       let
         isToMe = (toUpper $ myNick) `isInfixOf` (toUpper $ msg)
-                   where myNick = I.underlying $ nick cfg
+                   where myNick = N.unpack $ nick cfg
         highlight t = theirNick <> ": " <> t
-                        where theirNick :: Text = I.underlying $ I.nick origin
+                        where theirNick = N.unpack $ I.nick origin
       in if isToMe then do
         let question = fromMaybe msg $ runParser (stripHighlight $ nick cfg) msg
         stateWithKey <- tryToLoadKey cfg state
@@ -57,7 +58,7 @@ tryToLoadKey cfg state = if isJust $ apiKey state then return state else do
 
 stripHighlight :: I.Target -> Parser Text
 stripHighlight myNick =
-  skipSpace *> asciiCI (I.underlying myNick) *> skipSpace *> optional (char ':' <|> char ',')
+  skipSpace *> asciiCI (N.unpack myNick) *> skipSpace *> optional (char ':' <|> char ',')
   *> skip isHorizontalSpace *> takeText
 
 chatter :: HState -> Text -> IO (HState, Maybe Text)
