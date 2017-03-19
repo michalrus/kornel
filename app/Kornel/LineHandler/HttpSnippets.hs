@@ -1,9 +1,9 @@
-module LineHandler.HttpSnippets
+module Kornel.LineHandler.HttpSnippets
        ( handle
        ) where
 
-import LineHandler
-import CLI
+import Kornel.LineHandler
+import Kornel.CLI
 import Control.Monad
 import Data.ByteString
 import Data.Maybe (catMaybes, listToMaybe)

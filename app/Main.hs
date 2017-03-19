@@ -17,15 +17,15 @@ import qualified Data.UUID.V4 as UUID
 import qualified Data.UUID as UUID
 import Network.Connection
 import qualified IrcParser as I
-import CLI
-import LineHandler
-import qualified LineHandler.Chatter
-import qualified LineHandler.Slap
-import qualified LineHandler.Google
-import qualified LineHandler.Clojure
-import qualified LineHandler.HttpSnippets
-import qualified LineHandler.Scala
-import qualified LineHandler.Haskell
+import Kornel.CLI
+import Kornel.LineHandler
+import qualified Kornel.LineHandler.Chatter
+import qualified Kornel.LineHandler.Slap
+import qualified Kornel.LineHandler.Google
+import qualified Kornel.LineHandler.Clojure
+import qualified Kornel.LineHandler.HttpSnippets
+import qualified Kornel.LineHandler.Scala
+import qualified Kornel.LineHandler.Haskell
 
 main :: IO ()
 main = do
@@ -83,13 +83,13 @@ runSession cfg ctx = do
             keepProcessingWith handlers
   keepProcessingWith [ handleLogging
                      , handlePing
-                     , LineHandler.Chatter.handle
-                     , LineHandler.Slap.handle
-                     , LineHandler.Google.handle
-                     , LineHandler.Clojure.handle
-                     , LineHandler.HttpSnippets.handle
-                     , LineHandler.Scala.handle
-                     , LineHandler.Haskell.handle
+                     , Kornel.LineHandler.Chatter.handle
+                     , Kornel.LineHandler.Slap.handle
+                     , Kornel.LineHandler.Google.handle
+                     , Kornel.LineHandler.Clojure.handle
+                     , Kornel.LineHandler.HttpSnippets.handle
+                     , Kornel.LineHandler.Scala.handle
+                     , Kornel.LineHandler.Haskell.handle
                      ]
   connectionClose con
   killThread thrPing

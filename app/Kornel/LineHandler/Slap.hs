@@ -1,8 +1,8 @@
-module LineHandler.Slap
+module Kornel.LineHandler.Slap
        ( handle
        ) where
 
-import LineHandler
+import Kornel.LineHandler
 import Control.Monad
 import Data.Monoid ((<>))
 import Data.Text as T

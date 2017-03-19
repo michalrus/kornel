@@ -1,14 +1,14 @@
-module LineHandler.Haskell
+module Kornel.LineHandler.Haskell
        ( handle
        ) where
 
-import LineHandler
-import CLI as C
+import Kornel.LineHandler
+import Kornel.CLI as C
 import Control.Applicative
 import Control.Monad
 import Data.Semigroup ((<>))
 import Data.Attoparsec.Text as P
-import qualified LineHandler.BotProxy as Proxy
+import qualified Kornel.LineHandler.BotProxy as Proxy
 
 handle :: LineHandler
 handle = Proxy.handle C.haskellBotNicks $ do

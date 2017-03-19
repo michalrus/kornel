@@ -1,9 +1,9 @@
-module LineHandler.Google
+module Kornel.LineHandler.Google
        ( handle
        , google
        ) where
 
-import LineHandler
+import Kornel.LineHandler
 import Control.Monad
 import Data.Attoparsec.Text as P
 import Data.Semigroup ((<>))

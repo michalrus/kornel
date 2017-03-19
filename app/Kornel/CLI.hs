@@ -1,4 +1,4 @@
-module CLI
+module Kornel.CLI
        ( Config(..)
        , readConfig
        ) where

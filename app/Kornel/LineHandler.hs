@@ -1,4 +1,4 @@
-module LineHandler
+module Kornel.LineHandler
        ( Handler(..)
        , emptyHandler
        , LineHandler
@@ -23,7 +23,7 @@ import Data.Text
 import qualified Data.Text.Lazy as TL
 import System.IO
 import System.Random (randomRIO)
-import qualified CLI as C
+import qualified Kornel.CLI as C
 import qualified IrcParser as I
 import Network.HTTP.Client (Request, requestHeaders)
 import HTMLEntities.Decoder (htmlEncodedText)

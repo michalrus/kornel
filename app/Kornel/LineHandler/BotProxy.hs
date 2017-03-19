@@ -1,10 +1,10 @@
-module LineHandler.BotProxy
+module Kornel.LineHandler.BotProxy
        ( handle
        , nextElem
        ) where
 
-import LineHandler
-import CLI as C
+import Kornel.LineHandler
+import Kornel.CLI as C
 import qualified IrcParser as I
 import Control.Monad
 import Control.Monad.Zip

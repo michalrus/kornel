@@ -59,16 +59,16 @@ executable kornel-exe
                      , regex-base
                      , regex-pcre
                      , html-entities
-  other-modules:       CLI
-                     , LineHandler
-                     , LineHandler.Chatter
-                     , LineHandler.Slap
-                     , LineHandler.Google
-                     , LineHandler.Clojure
-                     , LineHandler.HttpSnippets
-                     , LineHandler.BotProxy
-                     , LineHandler.Scala
-                     , LineHandler.Haskell
+  other-modules:       Kornel.CLI
+                     , Kornel.LineHandler
+                     , Kornel.LineHandler.Chatter
+                     , Kornel.LineHandler.Slap
+                     , Kornel.LineHandler.Google
+                     , Kornel.LineHandler.Clojure
+                     , Kornel.LineHandler.HttpSnippets
+                     , Kornel.LineHandler.BotProxy
+                     , Kornel.LineHandler.Scala
+                     , Kornel.LineHandler.Haskell
   default-language:    Haskell2010
 
 test-suite kornel-test

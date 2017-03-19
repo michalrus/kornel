@@ -1,9 +1,9 @@
-module LineHandler.Clojure
+module Kornel.LineHandler.Clojure
        ( handle
        ) where
 
 import GHC.Generics
-import LineHandler
+import Kornel.LineHandler
 import Control.Applicative
 import Control.Monad
 import Data.Aeson

@@ -1,9 +1,9 @@
-module LineHandler.Chatter
+module Kornel.LineHandler.Chatter
        ( handle
        ) where
 
 import GHC.Generics
-import LineHandler
+import Kornel.LineHandler
 import Control.Applicative
 import Control.Monad
 import Control.Newtype as N
@@ -17,7 +17,7 @@ import Data.Text.Encoding (encodeUtf8)
 import qualified Network.HTTP.Client.TLS as HTTPS
 import Network.HTTP.Simple
 import qualified IrcParser as I
-import CLI
+import Kornel.CLI
 
 data HState = HState
               { cleverState :: Maybe Text
