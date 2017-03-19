@@ -23,6 +23,7 @@ cmdParser = skipSpace *> asciiCI "@slap" *> many1 nick
     nick = skipSpace *> takeWhile1 (not . isHorizontalSpace)
 
 -- | Reasons taken from the wonderful lambdabot. ♥
+{-# ANN reasons ("HLint: ignore Redundant $" :: String) #-}
 reasons :: [Text] -> [Text]
 reasons nicks =
   [ me $ "slaps " <> x <> "."
@@ -75,6 +76,6 @@ possessive x
 
 listPeople :: [Text] -> Text
 listPeople = \case
-  x1      : [] -> x1
-  x1 : x2 : [] -> x1 <> " and " <> x2
-  xs           -> (T.intercalate ", " $ Prelude.init xs) <> " and " <> Prelude.last xs
+  [x]      -> x
+  [x1, x2] -> x1 <> " and " <> x2
+  xs       -> T.intercalate ", " (Prelude.init xs) <> ", and " <> Prelude.last xs

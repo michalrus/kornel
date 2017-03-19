@@ -36,8 +36,8 @@ configParser = Config
                    <> help "Port on the HOST")
   <*> switch (long "ssl")
   <*> option target (long "nick")
-  <*> (optional $ strOption (long "nickserv-password-file"))
-  <*> (optional $ strOption (long "cleverbot-api-key-file"))
+  <*> optional (strOption (long "nickserv-password-file"))
+  <*> optional (strOption (long "cleverbot-api-key-file"))
   <*> option targets (long "haskell-bot-nicks" <> metavar "NICK1[,…]")
   <*> option targets (long "scala-bot-nicks" <> metavar "NICK1[,…]")
   <*> option auto (long "http-snippets-fetch-max"

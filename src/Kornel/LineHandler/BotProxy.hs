@@ -28,15 +28,15 @@ handle botNicks commandParser =
       I.IrcLine (Just origin) (I.Privmsg target msg)
 
         | elem (I.nick origin) (botNicks cfg) -> do
-            let r = (\to -> I.Privmsg to msg) <$> lastReplyTo state
+            let r = (`I.Privmsg` msg) <$> lastReplyTo state
             return (r, handle' state)
 
         | otherwise ->
             case runParser commandParser msg of
-              Just (command) -> do
+              Just command -> do
                 let replyTo = if I.isChannel target then target else I.nick origin
-                let bot = (listToMaybe $ botNicks cfg)
-                return ((\to -> I.Privmsg to command) <$> bot,
+                let bot = listToMaybe $ botNicks cfg
+                return ((`I.Privmsg` command) <$> bot,
                         handle' $ state { lastReplyTo = Just replyTo
                                         , lastBotNick = bot
                                         , lastBotInquiry = Just command
@@ -47,7 +47,7 @@ handle botNicks commandParser =
       I.IrcLine _ (I.NumericCommand 401 (_ : target : _))
         | (Just . I.Target) target == lastBotNick state -> do
             let nextNick = nextElem (botNicks cfg) $ I.Target target
-            case nextNick `mzip` (lastBotInquiry state) of
+            case nextNick `mzip` lastBotInquiry state of
               Just (to, command) ->
                 return (Just $ I.Privmsg to command,
                         handle' state { lastBotNick = Just to
@@ -63,9 +63,9 @@ handle botNicks commandParser =
 
 nextElem :: Eq a => [a] -> a -> Maybe a
 nextElem xs after
-  | notElem after xs = listToMaybe xs
+  | after `notElem` xs = listToMaybe xs
   | otherwise
     = listToMaybe
-    $ mfilter ((/=) after)
-    $ Prelude.dropWhile ((/=) after)
+    . mfilter (/= after)
+    . Prelude.dropWhile (/= after)
     $ xs

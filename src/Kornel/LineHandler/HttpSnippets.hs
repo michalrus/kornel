@@ -18,13 +18,13 @@ handle :: LineHandler
 handle = onlyPrivmsgRespondWithNotice handleP
   where
     handleP = Handler $ \cfg (_, _, msg) -> do
-      res <- join <$> (discardException $ snippets cfg msg)
+      res <- join <$> discardException (snippets cfg msg)
       return (res, handleP)
 
 snippets :: Config -> Text -> IO (Maybe Text)
 snippets cfg text = do
   let urls = findURLs text
-  snips <- catMaybes <$> (getSnippet $ httpSnippetsFetchMax cfg) `traverse` urls
+  snips <- catMaybes <$> getSnippet (httpSnippetsFetchMax cfg) `traverse` urls
   return $ case snips of
     [] -> Nothing
     xs -> Just $ T.intercalate "\n" xs
@@ -32,11 +32,11 @@ snippets cfg text = do
 getSnippet :: Int -> Text -> IO (Maybe Text)
 getSnippet atMost url = do
   manager <- HTTPS.newTlsManager
-  request <- fakeChromium <$> (parseRequest $ T.unpack url)
+  request <- fakeChromium <$> parseRequest (T.unpack url)
   response <- withResponse request manager $ \r ->
     brReadSome (responseBody r) atMost
   let title = findTitle $ LBS.toStrict response
-  return $ strip <$> decodeHtmlEntities <$> decodeUtf8 <$> title
+  return $ strip . decodeHtmlEntities . decodeUtf8 <$> title
 
 findTitle :: ByteString -> Maybe ByteString
 findTitle haystack =

@@ -25,7 +25,7 @@ newtype Realname = Realname Text deriving (Show, Eq, Generic) ; instance Newtype
 newtype Hostname = Hostname Text deriving (Show, Eq, Generic) ; instance Newtype Hostname
 
 isChannel :: Target -> Bool
-isChannel (Target s) = Prelude.any (flip isPrefixOf s) ["#", "!", "&"]
+isChannel (Target s) = Prelude.any (`isPrefixOf` s) ["#", "!", "&"]
 
 data Origin = Origin
               { nick :: Target
@@ -52,7 +52,7 @@ data IrcCommand
   deriving (Show, Eq)
 
 readMessage :: Text -> Either String IrcLine
-readMessage msg = parseOnly parseMessage msg
+readMessage = parseOnly parseMessage
 
 showCommand :: IrcCommand -> Text
 showCommand = sanitize <$> \case
@@ -62,20 +62,19 @@ showCommand = sanitize <$> \case
   User u r           -> "USER " <> N.unpack u <> " - - :" <> N.unpack r
   Join chs           -> "JOIN " <> intercalate "," (N.unpack <$> chs)
   Part chs reason    -> "PART " <> intercalate "," (N.unpack <$> chs) <> maybe "" (append " :") reason
-  Mode t m args      -> "MODE " <> N.unpack t <> " " <> m <> " " <> intercalate " " args
+  Mode t m args      -> "MODE " <> N.unpack t <> " " <> m <> " " <> T.unwords args
   Notice t m         -> "NOTICE " <> N.unpack t <> " :" <> m
   Privmsg t m        -> "PRIVMSG " <> N.unpack t <> " :" <> m
   StringCommand
-    name args        -> name                          <> " " <> (intercalate " " $ colonize args)
+    name args        -> name                        <> " " <> T.unwords (colonize args)
   NumericCommand
-    name args        -> (T.pack $ printf "%03i" name) <> " " <> (intercalate " " $ colonize args)
+    name args        -> T.pack (printf "%03i" name) <> " " <> T.unwords (colonize args)
   where
     sanitize :: Text -> Text
-    sanitize input =
+    sanitize =
         replace "\n" "\\LF"
-      $ replace "\r" "\\CR"
-      $ replace "\0" "\\NUL"
-      $ input
+      . replace "\r" "\\CR"
+      . replace "\0" "\\NUL"
     colonize [] = []
     colonize xs = Prelude.init xs ++ [":" <> Prelude.last xs]
 
@@ -87,9 +86,9 @@ parseMessage =
 parseOrigin :: Parser Origin
 parseOrigin = full <|> nickOnly
   where
-    full     = Origin <$> (Target <$> (P.takeTill $ \c -> isWhitespace c || c == '!')) <* char '!'
-                      <*> (Just . Username <$> (P.takeTill $ \c -> isWhitespace c || c == '@')) <* char '@'
-                      <*> (Just . Hostname <$> (P.takeTill isWhitespace))
+    full     = Origin <$> (Target <$> P.takeTill (\c -> isWhitespace c || c == '!')) <* char '!'
+                      <*> (Just . Username <$> P.takeTill (\c -> isWhitespace c || c == '@')) <* char '@'
+                      <*> (Just . Hostname <$> P.takeTill isWhitespace)
     nickOnly = Origin <$> (Target <$> P.takeTill isWhitespace) <*> pure Nothing <*> pure Nothing
 
 parseCommand :: Parser IrcCommand
@@ -97,8 +96,8 @@ parseCommand =
   skipMany space *> (numericCmd <|> stringCmd)
   where
     argument :: Parser Text
-    argument = skipMany1 space *> (lastOne <|> (takeWhile1 $ not . isWhitespace))
-      where lastOne = char ':' *> (P.takeTill isEndOfLine)
+    argument = skipMany1 space *> (lastOne <|> takeWhile1 (not . isWhitespace))
+      where lastOne = char ':' *> P.takeTill isEndOfLine
 
     optionalArg :: Parser (Maybe Text)
     optionalArg = option Nothing (Just <$> argument)
@@ -108,17 +107,17 @@ parseCommand =
 
     stringCmd :: Parser IrcCommand
     stringCmd = do
-      cmd <- T.toUpper <$> (takeWhile1 $ inClass "A-Za-z0-9_")
+      cmd <- T.toUpper <$> takeWhile1 (inClass "A-Za-z0-9_")
       case cmd of
         "PING"    -> Ping    <$> argument
         "PONG"    -> Pong    <$> argument
-        "NICK"    -> Nick    <$> Target <$> argument
-        "USER"    -> User    <$> Username <$> argument <*> (Realname <$> (argument *> argument *> argument))
-        "JOIN"    -> Join    <$> fmap Target . splitOn "," <$> argument
-        "MODE"    -> Mode    <$> Target <$> argument <*> argument <*> many argument
-        "PART"    -> Part    <$> fmap Target . splitOn "," <$> argument <*> optionalArg
-        "NOTICE"  -> Notice  <$> Target <$> argument <*> argument
-        "PRIVMSG" -> Privmsg <$> Target <$> argument <*> argument
+        "NICK"    -> Nick    . Target <$> argument
+        "USER"    -> User    . Username <$> argument <*> (Realname <$> (argument *> argument *> argument))
+        "JOIN"    -> Join    . fmap Target . splitOn "," <$> argument
+        "MODE"    -> Mode    . Target <$> argument <*> argument <*> many argument
+        "PART"    -> Part    . fmap Target . splitOn "," <$> argument <*> optionalArg
+        "NOTICE"  -> Notice  . Target <$> argument <*> argument
+        "PRIVMSG" -> Privmsg . Target <$> argument <*> argument
         _         -> StringCommand cmd <$> many argument
 
 isWhitespace :: Char -> Bool

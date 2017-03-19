@@ -16,7 +16,7 @@ handle = Proxy.handle C.scalaBotNicks $ do
   asciiCI "@scala" *> spc
   command
     <-  ((asciiCI ":type" <|> asciiCI ":t") *> spc *> pure "!type")
-    <|> (pure "!")
+    <|> pure "!"
   expr <- takeText
   return (command <> " " <> expr)
   where

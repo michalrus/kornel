@@ -19,7 +19,7 @@ handle = onlyPrivmsg handleP
   where
     handleP = Handler $ \_ (_, _, msg) -> do
       let sexpr = runParser cmdParser msg
-      res <- join <$> (discardException $ join <$> eval `traverse` sexpr)
+      res <- join <$> discardException (join <$> eval `traverse` sexpr)
       return (res, handleP)
 
 cmdParser :: Parser Text
@@ -37,7 +37,7 @@ eval sexpr = do
   manager <- HTTPS.newTlsManager
   let request
         = setRequestManager manager
-        $ setRequestQueryString [ ("expr", Just $ encodeUtf8 sexpr)
+        . setRequestQueryString [ ("expr", Just $ encodeUtf8 sexpr)
                                 ]
         $ "http://www.tryclj.com/eval.json"
   response <- getResponseBody <$> httpJSON request
@@ -45,4 +45,4 @@ eval sexpr = do
   where
     render :: TryCljResponse -> Text
     render r = flip fromMaybe (message r)
-      $ flip fromMaybe (result r) "Error: got neither a ‘result’ nor a ‘message’."
+      $ fromMaybe "Error: got neither a ‘result’ nor a ‘message’." (result r)

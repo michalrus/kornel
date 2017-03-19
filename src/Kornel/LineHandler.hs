@@ -45,7 +45,7 @@ instance Profunctor Handler where
 --     return (g =<< mb, dimapMaybe f g next)
 
 emptyHandler :: Handler a b
-emptyHandler = Handler $ (\_ _ -> return (Nothing, emptyHandler))
+emptyHandler = Handler $ \_ _ -> return (Nothing, emptyHandler)
 
 type LineHandler = Handler I.IrcLine I.IrcCommand
 

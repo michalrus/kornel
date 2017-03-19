@@ -7,6 +7,7 @@ import System.IO.Error
 import System.Timeout
 import Control.Monad
 import Control.Monad.Loops (whileJust_)
+import qualified Control.Newtype as N
 import Control.Concurrent (forkIO, threadDelay, killThread)
 import Control.Concurrent.Chan
 import qualified Data.ByteString as BS
@@ -14,6 +15,7 @@ import Data.Maybe (maybeToList)
 import Data.Text as Text -- bug in Intero?
 import Data.Text.Encoding (decodeUtf8With, encodeUtf8)
 import qualified Data.Text.IO as TIO
+import Data.Traversable
 import qualified Data.UUID.V4 as UUID
 import qualified Data.UUID as UUID
 import Network.Connection
@@ -30,7 +32,7 @@ import qualified Kornel.LineHandler.Haskell
 
 main :: IO ()
 main = do
-  mapM_ (flip hSetEncoding utf8) [stdout, stdin, stderr]
+  mapM_ (`hSetEncoding` utf8) [stdout, stdin, stderr]
   readConfig >>= runConfig
 
 runConfig :: Config -> IO ()
@@ -67,7 +69,7 @@ runSession cfg ctx = do
   let pingEvery = 20 * 1000 * 1000 -- µs
   -- parse & enqueue lines from server
   _ <- forkIO $ do
-    let timedProcessLine = join <$> (timeout (2 * pingEvery) $ processRawLine con)
+    let timedProcessLine = join <$> timeout (2 * pingEvery) (processRawLine con)
     whileJust_ timedProcessLine $ writeChan ipc . QServerLine
     writeChan ipc QQuit
   -- send our PINGs
@@ -85,12 +87,12 @@ runSession cfg ctx = do
 
 editNth :: [a] -> Int -> a -> [a]
 editNth xs n x =
-  if (0 <= n && n < Prelude.length xs) then
+  if 0 <= n && n < Prelude.length xs then
     Prelude.take n xs ++ [x] ++ Prelude.drop (n + 1) xs
   else xs
 
 iterateWhileJust :: Monad m => m a -> (a -> m (Maybe a)) -> m ()
-iterateWhileJust action run = do
+iterateWhileJust action run =
   action >>= go
   where go an = run an >>= \case
           Just an1 -> go an1
@@ -118,25 +120,25 @@ processQueue cfg con dequeue enqueue handlers =
 
 login :: Config -> ConnectionContext -> IO Connection
 login cfg ctx = do
-  con <- connectTo ctx $ ConnectionParams
+  con <- connectTo ctx ConnectionParams
                             { connectionHostname  = serverHost cfg
                             , connectionPort      = serverPort cfg
                             , connectionUseSecure =
-                              if (not $ usingSSL cfg) then Nothing
-                              else Just $ TLSSettingsSimple
+                              if not $ usingSSL cfg then Nothing
+                              else Just TLSSettingsSimple
                                    { settingDisableCertificateValidation = False
                                    , settingDisableSession = True
                                    , settingUseServerName = True
                                    }
                             , connectionUseSocks  = Nothing
                             }
-  nickservCmd <- flip traverse (nickservPasswordFile cfg) $
+  nickservCmd <- for (nickservPasswordFile cfg) $
     \path -> do
       pw <- strip <$> TIO.readFile path
-      return $ I.Privmsg (I.Target "NickServ") (append "IDENTIFY " $ pw)
+      return $ I.Privmsg (I.Target "NickServ") (append "IDENTIFY " pw)
   mapM_ (sendCommand (verbose cfg) con) $
     [ I.Nick $ nick cfg
-    , I.User (I.Username $ (let (I.Target t) = nick cfg in t))
+    , I.User (I.Username (N.unpack $ nick cfg))
              (I.Realname "https://github.com/michalrus/kornel")
     , I.Join $ channels cfg
     ] ++ maybeToList nickservCmd
@@ -146,7 +148,7 @@ processRawLine :: Connection -> IO (Maybe I.IrcLine)
 processRawLine con =
   flip catchIOError (\e -> if isEOFError e then return Nothing else ioError e) $ do
     rawBytes <- connectionGetLine 1024 con
-    raw <- dropWhileEnd isEndOfLine <$> (decodeUtf8With $ \_ _ -> Just '_') <$> pure rawBytes
+    raw <- dropWhileEnd isEndOfLine . decodeUtf8With (\_ _ -> Just '_') <$> pure rawBytes
     case I.readMessage raw of
       Left  err -> do
         hPutStrLn stderr $ "Failed to parse message ‘" ++ show raw ++ "’ with ‘" ++ show err ++ "’"

@@ -14,6 +14,7 @@ import Data.Monoid ((<>))
 import Data.Text as T
 import qualified Data.Text.IO as TIO
 import Data.Text.Encoding (encodeUtf8)
+import Data.Traversable
 import qualified Network.HTTP.Client.TLS as HTTPS
 import Network.HTTP.Simple
 import qualified IrcParser as I
@@ -24,6 +25,7 @@ data HState = HState
               , apiKey :: Maybe Text
               }
 
+{-# ANN CleverbotResponse ("HLint: ignore Use camelCase" :: String) #-}
 data CleverbotResponse = CleverbotResponse
                          { cs :: Text
                          , clever_output :: Text
@@ -37,23 +39,23 @@ handle = onlyPrivmsg $ handle' $ HState Nothing Nothing
     handle' :: HState -> PrivmsgHandler
     handle' state = Handler $ \cfg (origin, _, msg) ->
       let
-        isToMe = (toUpper $ myNick) `isInfixOf` (toUpper $ msg)
+        isToMe = toUpper myNick `isInfixOf` toUpper msg
                    where myNick = N.unpack $ nick cfg
         highlight t = theirNick <> ": " <> t
                         where theirNick = N.unpack $ I.nick origin
       in if isToMe then do
         let question = fromMaybe msg $ runParser (stripHighlight $ nick cfg) msg
         stateWithKey <- tryToLoadKey cfg state
-        (nextState, answer) <- (fromMaybe (state, Nothing))
-                                 <$> (discardException $ chatter stateWithKey question)
+        (nextState, answer) <- fromMaybe (state, Nothing)
+                                 <$> discardException (chatter stateWithKey question)
         return (highlight <$> answer, handle' nextState)
       else return (Nothing, handle' state)
 
 tryToLoadKey :: Config -> HState -> IO HState
 tryToLoadKey cfg state = if isJust $ apiKey state then return state else do
-  cbApiKey <- join <$> (discardException
-                         $ flip traverse (cleverBotApiKeyFile cfg)
-                         $ \p -> strip <$> TIO.readFile p)
+  cbApiKey <- join <$> discardException
+                         (for (cleverBotApiKeyFile cfg) $
+                          \p -> strip <$> TIO.readFile p)
   return $ state { apiKey = cbApiKey }
 
 stripHighlight :: I.Target -> Parser Text
@@ -66,7 +68,7 @@ chatter state msg = do
   manager <- HTTPS.newTlsManager
   let request
         = setRequestManager manager
-        $ setRequestQueryString [ ("key",   encodeUtf8 <$> apiKey state)
+        . setRequestQueryString [ ("key",   encodeUtf8 <$> apiKey state)
                                 , ("cs",    encodeUtf8 <$> cleverState state)
                                 , ("input", Just $ encodeUtf8 msg)
                                 ]

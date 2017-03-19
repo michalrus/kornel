@@ -20,7 +20,7 @@ handle = onlyPrivmsg handleP
   where
     handleP = Handler $ \_ (_, _, msg) -> do
       let query = runParser cmdParser msg
-      response <- join <$> (discardException $ join <$> google `traverse` query)
+      response <- join <$> discardException (join <$> google `traverse` query)
       return (response, handleP)
 
 cmdParser :: Parser Text
@@ -31,13 +31,13 @@ google query = do
   manager <- HTTPS.newTlsManager
   let request
         = setRequestManager manager
-        $ fakeChromium
-        $ setRequestQueryString [ ("q",  Just $ encodeUtf8 query)
+        . fakeChromium
+        . setRequestQueryString [ ("q",  Just $ encodeUtf8 query)
                                 , ("hl", Just "en")
                                 , ("ie", Just "UTF-8")
                                 ]
         $ "https://www.google.com/search"
-  response <- LBS.toStrict <$> getResponseBody <$> httpLBS request
+  response <- LBS.toStrict . getResponseBody <$> httpLBS request
   let result = firstResult response
   return $ (\(GResult u t) -> "“" <> t <> "” — " <> u) <$> result
 
@@ -49,8 +49,8 @@ data GResult = GResult
 firstResult :: BS.ByteString -> Maybe GResult
 firstResult input =
   case parts of
-    _ : u : t : [] -> Just $ GResult { url = strip $ decodeUtf8 u, title = strip $ decodeHtmlEntities $ decodeUtf8 t }
-    _              -> Nothing
+    [_, u, t] -> Just GResult { url = strip $ decodeUtf8 u, title = strip $ decodeHtmlEntities $ decodeUtf8 t }
+    _         -> Nothing
   where
     first :: ByteString = input =~ ("(?i)<h3.*?</h3>" :: ByteString)
     parts :: [ByteString] = getAllTextSubmatches $ first =~ ("(?i)<a .*?href=\"(.*?)\".*?>(.*?)<" :: ByteString)

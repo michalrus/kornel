@@ -15,19 +15,19 @@ handle = Proxy.handle C.haskellBotNicks $ do
   skipSpace
   (asciiCI "@haskell" <|> asciiCI "@hs") *> spc
   command
-    <-  ((asciiCI ":type"   <|> asciiCI ":t") *> spc *> pure "@type")
-    <|> ((asciiCI ":kind"   <|> asciiCI ":k") *> spc *> pure "@kind")
-    <|> ((asciiCI ":pl"                     ) *> spc *> pure "@pl")
-    <|> ((asciiCI ":pointful"               ) *> spc *> pure "@pointful")
-    <|> ((asciiCI ":free"                   ) *> spc *> pure "@free")
-    <|> ((asciiCI ":instances"              ) *> spc *> pure "@instances")
-    <|> ((asciiCI ":hoogle"                 ) *> spc *> pure "@hoogle")
-    <|> ((asciiCI ":index"                  ) *> spc *> pure "@index")
-    <|> ((asciiCI ":djinn"                  ) *> spc *> pure "@djinn")
-    <|> ((asciiCI ":undo"                   ) *> spc *> pure "@undo")
-    <|> ((asciiCI ":unmtl"                  ) *> spc *> pure "@unmtl")
+    <-  ((asciiCI ":type" <|> asciiCI ":t") *> spc *> pure "@type")
+    <|> ((asciiCI ":kind" <|> asciiCI ":k") *> spc *> pure "@kind")
+    <|> ( asciiCI ":pl"                     *> spc *> pure "@pl")
+    <|> ( asciiCI ":pointful"               *> spc *> pure "@pointful")
+    <|> ( asciiCI ":free"                   *> spc *> pure "@free")
+    <|> ( asciiCI ":instances"              *> spc *> pure "@instances")
+    <|> ( asciiCI ":hoogle"                 *> spc *> pure "@hoogle")
+    <|> ( asciiCI ":index"                  *> spc *> pure "@index")
+    <|> ( asciiCI ":djinn"                  *> spc *> pure "@djinn")
+    <|> ( asciiCI ":undo"                   *> spc *> pure "@undo")
+    <|> ( asciiCI ":unmtl"                  *> spc *> pure "@unmtl")
     <|> ((asciiCI ":source" <|> asciiCI ":src" <|> asciiCI ":s") *> spc *> pure "@src")
-    <|> (pure ">")
+    <|> pure ">"
   expr <- takeText
   return (command <> " " <> expr)
   where
