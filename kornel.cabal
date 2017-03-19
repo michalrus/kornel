@@ -1,5 +1,5 @@
 name:                kornel
-version:             0.1.0.0
+version:             0.1.0
 -- synopsis:
 -- description:
 homepage:            https://github.com/michalrus/kornel#readme
@@ -15,51 +15,16 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src
-  exposed-modules:     IrcParser
-  build-depends:       base >= 4.7 && < 5
-                     , text
-                     , attoparsec
-                     , newtype-generics
   ghc-options:         -Wall -Werror
-  default-extensions:  ScopedTypeVariables
-                     , OverloadedStrings
-                     , LambdaCase
+  default-extensions:  DeriveFunctor
                      , DeriveGeneric
-                     , DeriveFunctor
                      , DuplicateRecordFields
-  default-language:    Haskell2010
-
-executable kornel-exe
-  hs-source-dirs:      app
-  main-is:             Main.hs
-  ghc-options:         -Wall -Werror -threaded -rtsopts -with-rtsopts=-N
-  default-extensions:  ScopedTypeVariables
-                     , OverloadedStrings
                      , LambdaCase
-                     , DeriveGeneric
-                     , DeriveFunctor
-                     , DuplicateRecordFields
-  build-depends:       base
-                     , kornel
-                     , profunctors
-                     , newtype-generics
-                     , text
-                     , optparse-applicative
-                     , network
-                     , connection
-                     , monad-loops
-                     , uuid
-                     , random
-                     , attoparsec
-                     , bytestring
-                     , http-client-tls
-                     , http-conduit
-                     , http-client
-                     , aeson
-                     , regex-base
-                     , regex-pcre
-                     , html-entities
-  other-modules:       Kornel.CLI
+                     , OverloadedStrings
+                     , ScopedTypeVariables
+  exposed-modules:     IrcParser
+                     , Kornel.CLI
+                     , Kornel.Executable
                      , Kornel.LineHandler
                      , Kornel.LineHandler.Chatter
                      , Kornel.LineHandler.Slap
@@ -69,6 +34,35 @@ executable kornel-exe
                      , Kornel.LineHandler.BotProxy
                      , Kornel.LineHandler.Scala
                      , Kornel.LineHandler.Haskell
+  build-depends:       base >= 4.7 && < 5
+                     , aeson
+                     , attoparsec
+                     , bytestring
+                     , connection
+                     , html-entities
+                     , http-client
+                     , http-client-tls
+                     , http-conduit
+                     , monad-loops
+                     , network
+                     , newtype-generics
+                     , newtype-generics
+                     , optparse-applicative
+                     , profunctors
+                     , random
+                     , regex-base
+                     , regex-pcre
+                     , text
+                     , uuid
+  default-language:    Haskell2010
+
+executable kornel-exe
+  hs-source-dirs:      app
+  main-is:             Main.hs
+  ghc-options:         -Wall -Werror -threaded -rtsopts -with-rtsopts=-N
+  build-depends:       base
+                     , kornel
+  other-modules:
   default-language:    Haskell2010
 
 test-suite kornel-test
