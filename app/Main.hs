@@ -3,7 +3,6 @@ module Main where
 import System.IO
 import System.IO.Error
 import System.Timeout
-import Control.Exception.Base (catch, SomeException)
 import Control.Monad
 import Control.Monad.Loops (whileJust_)
 import Control.Concurrent (forkIO, threadDelay, killThread)
@@ -37,8 +36,7 @@ runConfig cfg = do
   ctx <- initConnectionContext
   forever $ do
     hPutStrLn stderr "Starting new session…"
-    catch (runSession cfg ctx) $ \(e :: SomeException) ->
-      hPutStrLn stderr $ "Error: " ++ show e
+    void $ discardException (runSession cfg ctx)
     hPutStrLn stderr "Session ended."
     threadDelay $ 10 * 1000 * 1000 -- µs
 
@@ -47,6 +45,18 @@ data IpcQueue
   | QClientLine I.IrcCommand
   | QServerLine I.IrcLine
   | QUpdateHandler Int LineHandler
+
+allHandlers :: [LineHandler]
+allHandlers = [ handleLogging
+              , handlePing
+              , Kornel.LineHandler.Chatter.handle
+              , Kornel.LineHandler.Slap.handle
+              , Kornel.LineHandler.Google.handle
+              , Kornel.LineHandler.Clojure.handle
+              , Kornel.LineHandler.HttpSnippets.handle
+              , Kornel.LineHandler.Scala.handle
+              , Kornel.LineHandler.Haskell.handle
+              ]
 
 runSession :: Config -> ConnectionContext -> IO ()
 runSession cfg ctx = do
@@ -63,37 +73,46 @@ runSession cfg ctx = do
     threadDelay pingEvery
     uuid <- UUID.nextRandom
     writeChan ipc $ QClientLine $ I.Ping $ pack $ UUID.toString uuid
-  -- process the queue, running each handler for each message on its own thread
-  let keepProcessingWith handlers = do
-        readChan ipc >>= \case
-          QQuit -> return ()
-          QUpdateHandler handlerId new ->
-            let editNth n x xs = if (0 <= n && n < Prelude.length xs) then
-                                   Prelude.take n xs ++ [x] ++ Prelude.drop (n + 1) xs
-                                 else xs
-            in keepProcessingWith $ editNth handlerId new handlers
-          QClientLine cmd -> sendCommand (verbose cfg) con cmd >> keepProcessingWith handlers
-          QServerLine ln -> do
-            forM_ ([0..] `Prelude.zip` handlers) $ \(handlerId, Handler handler) -> do
-              _ <- forkIO $ do
-                (resp, newHandler) <- handler cfg ln
-                writeChan ipc $ QUpdateHandler handlerId newHandler
-                mapM_ (writeChan ipc . QClientLine) resp
-              return ()
-            keepProcessingWith handlers
-  keepProcessingWith [ handleLogging
-                     , handlePing
-                     , Kornel.LineHandler.Chatter.handle
-                     , Kornel.LineHandler.Slap.handle
-                     , Kornel.LineHandler.Google.handle
-                     , Kornel.LineHandler.Clojure.handle
-                     , Kornel.LineHandler.HttpSnippets.handle
-                     , Kornel.LineHandler.Scala.handle
-                     , Kornel.LineHandler.Haskell.handle
-                     ]
+  -- process the queue
+  void $ discardException $
+    iterateWhileJust (pure allHandlers) $
+      processQueue cfg con (readChan ipc) (writeChan ipc)
   connectionClose con
   killThread thrPing
   return ()
+
+editNth :: [a] -> Int -> a -> [a]
+editNth xs n x =
+  if (0 <= n && n < Prelude.length xs) then
+    Prelude.take n xs ++ [x] ++ Prelude.drop (n + 1) xs
+  else xs
+
+iterateWhileJust :: Monad m => m a -> (a -> m (Maybe a)) -> m ()
+iterateWhileJust action run = do
+  action >>= go
+  where go an = run an >>= \case
+          Just an1 -> go an1
+          Nothing  -> return ()
+
+processQueue :: Config -> Connection -> IO IpcQueue -> (IpcQueue -> IO ()) -> [LineHandler] -> IO (Maybe [LineHandler])
+processQueue cfg con dequeue enqueue handlers =
+  dequeue >>= \case
+    QQuit ->
+      return Nothing
+    QUpdateHandler handlerId new ->
+      return . Just $ editNth handlers handlerId new
+    QClientLine cmd -> do
+      sendCommand (verbose cfg) con cmd
+      return . Just $ handlers
+    QServerLine ln -> do
+      forM_ ([0..] `Prelude.zip` handlers) $ \(handlerId, Handler handler) -> do
+        -- running each handler for each message on its own thread
+        _ <- forkIO $ do
+          (resp, newHandler) <- handler cfg ln
+          enqueue $ QUpdateHandler handlerId newHandler
+          mapM_ (enqueue . QClientLine) resp
+        return ()
+      return . Just $ handlers
 
 login :: Config -> ConnectionContext -> IO Connection
 login cfg ctx = do
