@@ -58,20 +58,13 @@ showCommand :: IrcCommand -> Text
 showCommand = sanitize <$> \case
   Ping t             -> "PING :" <> t
   Pong t             -> "PONG :" <> t
-  Nick (Target n)    -> "NICK " <> n
-  User
-    (Username u)
-    (Realname r)     -> "USER " <> u <> " - - :" <> r
+  Nick n             -> "NICK " <> N.unpack n
+  User u r           -> "USER " <> N.unpack u <> " - - :" <> N.unpack r
   Join chs           -> "JOIN " <> intercalate "," (N.unpack <$> chs)
-  Part chs reason    -> "PART " <> intercalate "," (N.unpack <$> chs)
-                                <> maybe "" (append " :") reason
-  Mode
-    (Target t) m
-    args             -> "MODE " <> t <> " " <> m <> " " <> intercalate " " args
-  Notice
-    (Target t) m     -> "NOTICE " <> t <> " :" <> m
-  Privmsg
-    (Target t) m     -> "PRIVMSG " <> t <> " :" <> m
+  Part chs reason    -> "PART " <> intercalate "," (N.unpack <$> chs) <> maybe "" (append " :") reason
+  Mode t m args      -> "MODE " <> N.unpack t <> " " <> m <> " " <> intercalate " " args
+  Notice t m         -> "NOTICE " <> N.unpack t <> " :" <> m
+  Privmsg t m        -> "PRIVMSG " <> N.unpack t <> " :" <> m
   StringCommand
     name args        -> name                          <> " " <> (intercalate " " $ colonize args)
   NumericCommand
@@ -81,6 +74,7 @@ showCommand = sanitize <$> \case
     sanitize input =
         replace "\n" "\\LF"
       $ replace "\r" "\\CR"
+      $ replace "\0" "\\NUL"
       $ input
     colonize [] = []
     colonize xs = Prelude.init xs ++ [":" <> Prelude.last xs]
