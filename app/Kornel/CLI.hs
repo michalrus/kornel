@@ -1,6 +1,7 @@
 module Kornel.CLI
        ( Config(..)
        , readConfig
+       , LogLevel(..)
        ) where
 
 import Network.Socket (HostName, PortNumber)
@@ -8,6 +9,8 @@ import Data.Text
 import Options.Applicative
 import Data.Semigroup ((<>))
 import qualified IrcParser as I
+
+data LogLevel = LogInfo | LogDebug deriving (Show, Eq)
 
 data Config = Config
               { serverHost :: HostName
@@ -20,7 +23,7 @@ data Config = Config
               , scalaBotNicks :: [I.Target]
               , httpSnippetsFetchMax :: Int
               , channels :: [I.Target]
-              , verbose :: Bool
+              , verbose :: LogLevel
               }
 
 configParser :: Parser Config
@@ -41,7 +44,7 @@ configParser = Config
                    <> metavar "BYTES"
                    <> help "This many bytes will be read from each document, until a <title/> is found.")
   <*> option targets (long "channels" <> metavar "CHANNEL1[,…]")
-  <*> switch (long "verbose")
+  <*> flag LogInfo LogDebug (long "verbose")
   where
     text = pack <$> str
     texts = splitOn "," <$> text

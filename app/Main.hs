@@ -153,9 +153,9 @@ processRawLine con =
     where
       isEndOfLine c = c == '\r' || c == '\n'
 
-sendCommand :: Bool -> Connection -> I.IrcCommand -> IO ()
+sendCommand :: LogLevel -> Connection -> I.IrcCommand -> IO ()
 sendCommand verbosely con cmd = do
-  when verbosely $ putStrLn $ "-> " ++ show cmd
+  when (verbosely == LogDebug) $ putStrLn $ "-> " ++ show cmd
   connectionPut con $ BS.append bytes "\r\n"
   where
     bytes = BS.take 510 $ encodeUtf8 $ I.showCommand cmd
@@ -168,5 +168,5 @@ handlePing = Handler $ \_ -> \case
 handleLogging :: LineHandler
 handleLogging = Handler $ \cfg -> \case
   I.IrcLine origin msg -> do
-    when (verbose cfg) $ putStrLn $ "<- " ++ show origin ++ " - " ++ show msg
+    when (verbose cfg == LogDebug) $ putStrLn $ "<- " ++ show origin ++ " - " ++ show msg
     return (Nothing, handleLogging)
