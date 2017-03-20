@@ -8,7 +8,7 @@ import Control.Monad
 import Data.Attoparsec.Text as P
 import Data.Semigroup ((<>))
 import Data.Text as T
-import Data.Text.Encoding (encodeUtf8, decodeUtf8)
+import Data.Text.Encoding (encodeUtf8)
 import qualified Network.HTTP.Client.TLS as HTTPS
 import qualified Data.ByteString.Lazy as LBS
 import Data.ByteString as BS
@@ -49,7 +49,7 @@ data GResult = GResult
 firstResult :: BS.ByteString -> Maybe GResult
 firstResult input =
   case parts of
-    [_, u, t] -> Just GResult { url = strip $ decodeUtf8 u, title = strip $ decodeHtmlEntities $ decodeUtf8 t }
+    [_, u, t] -> Just GResult { url = strip $ decodeUtf8_ u, title = strip $ decodeHtmlEntities $ decodeUtf8_ t }
     _         -> Nothing
   where
     first :: ByteString = input =~ ("(?i)<h3.*?</h3>" :: ByteString)

@@ -8,7 +8,7 @@ import Control.Monad
 import Data.ByteString
 import Data.Maybe (catMaybes, listToMaybe)
 import Data.Text as T
-import Data.Text.Encoding (encodeUtf8, decodeUtf8)
+import Data.Text.Encoding (encodeUtf8)
 import Text.Regex.PCRE
 import qualified Network.HTTP.Client.TLS as HTTPS
 import Network.HTTP.Client
@@ -36,7 +36,7 @@ getSnippet atMost url = do
   response <- withResponse request manager $ \r ->
     brReadSome (responseBody r) atMost
   let title = findTitle $ LBS.toStrict response
-  return $ strip . decodeHtmlEntities . decodeUtf8 <$> title
+  return $ strip . decodeHtmlEntities . decodeUtf8_ <$> title
 
 findTitle :: ByteString -> Maybe ByteString
 findTitle haystack =
@@ -46,7 +46,7 @@ findTitle haystack =
 
 findURLs :: Text -> [Text]
 findURLs input =
-  decodeUtf8 <$> matches
+  decodeUtf8_ <$> matches
   where
     inputBS = encodeUtf8 input
     matches :: [ByteString] = getAllTextMatches $ inputBS =~ ("(?i)https?://[^\\s><\\]\\[]+" :: ByteString)

@@ -13,7 +13,7 @@ import Control.Concurrent.Chan
 import qualified Data.ByteString as BS
 import Data.Maybe (maybeToList)
 import Data.Text as Text -- bug in Intero?
-import Data.Text.Encoding (decodeUtf8With, encodeUtf8)
+import Data.Text.Encoding (encodeUtf8)
 import qualified Data.Text.IO as TIO
 import Data.Traversable
 import qualified Data.UUID.V4 as UUID
@@ -148,7 +148,7 @@ processRawLine :: Connection -> IO (Maybe I.IrcLine)
 processRawLine con =
   flip catchIOError (\e -> if isEOFError e then return Nothing else ioError e) $ do
     rawBytes <- connectionGetLine 1024 con
-    raw <- dropWhileEnd isEndOfLine . decodeUtf8With (\_ _ -> Just '_') <$> pure rawBytes
+    raw <- dropWhileEnd isEndOfLine . decodeUtf8_ <$> pure rawBytes
     case I.readMessage raw of
       Left  err -> do
         hPutStrLn stderr $ "Failed to parse message ‘" ++ show raw ++ "’ with ‘" ++ show err ++ "’"

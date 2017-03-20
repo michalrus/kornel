@@ -12,15 +12,18 @@ module Kornel.LineHandler
        , discardError
        , fakeChromium
        , decodeHtmlEntities
+       , decodeUtf8_
        )
        where
 
 import qualified Control.Exception.Base as E
 import Data.Attoparsec.Text as P
+import Data.ByteString (ByteString)
 import Data.Profunctor
 import Data.Monoid ((<>))
 import Data.Text
 import qualified Data.Text.Lazy as TL
+import Data.Text.Encoding (decodeUtf8With)
 import System.IO
 import System.Random (randomRIO)
 import qualified Kornel.CLI as C
@@ -101,3 +104,6 @@ fakeChromium r =
 
 decodeHtmlEntities :: Text -> Text
 decodeHtmlEntities = TL.toStrict . TLB.toLazyText . htmlEncodedText
+
+decodeUtf8_ :: ByteString -> Text
+decodeUtf8_ = decodeUtf8With (\_ _ -> Just '_')
