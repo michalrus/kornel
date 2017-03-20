@@ -1,38 +1,38 @@
 module Kornel.LineHandler
-       ( Handler(..)
-       , emptyHandler
-       , LineHandler
-       , PrivmsgHandler
-       , onlyPrivmsg
-       , onlyPrivmsgRespondWithNotice
-       , randomElem
-       , meAction
-       , runParser
-       , discardException
-       , discardError
-       , fakeChromium
-       , decodeHtmlEntities
-       , decodeUtf8_
-       )
-       where
+  ( Handler(..)
+  , emptyHandler
+  , LineHandler
+  , PrivmsgHandler
+  , onlyPrivmsg
+  , onlyPrivmsgRespondWithNotice
+  , randomElem
+  , meAction
+  , runParser
+  , discardException
+  , discardError
+  , fakeChromium
+  , decodeHtmlEntities
+  , decodeUtf8_
+  ) where
 
 import qualified Control.Exception.Base as E
 import Data.Attoparsec.Text as P
 import Data.ByteString (ByteString)
-import Data.Profunctor
 import Data.Monoid ((<>))
+import Data.Profunctor
 import Data.Text
-import qualified Data.Text.Lazy as TL
 import Data.Text.Encoding (decodeUtf8With)
+import qualified Data.Text.Lazy as TL
+import qualified Data.Text.Lazy.Builder as TLB
+import HTMLEntities.Decoder (htmlEncodedText)
+import qualified IrcParser as I
+import qualified Kornel.CLI as C
+import Network.HTTP.Client (Request, requestHeaders)
 import System.IO
 import System.Random (randomRIO)
-import qualified Kornel.CLI as C
-import qualified IrcParser as I
-import Network.HTTP.Client (Request, requestHeaders)
-import HTMLEntities.Decoder (htmlEncodedText)
-import qualified Data.Text.Lazy.Builder as TLB
 
-newtype Handler a b = Handler (C.Config -> a -> IO (Maybe b, Handler a b))
+newtype Handler a b =
+  Handler (C.Config -> a -> IO (Maybe b, Handler a b))
 
 instance Profunctor Handler where
   dimap f g (Handler fab) =
@@ -46,7 +46,6 @@ instance Profunctor Handler where
 --   Handler $ \cfg c -> do
 --     (mb, next) <- fab cfg (f c)
 --     return (g =<< mb, dimapMaybe f g next)
-
 emptyHandler :: Handler a b
 emptyHandler = Handler $ \_ _ -> return (Nothing, emptyHandler)
 
@@ -58,17 +57,20 @@ type PrivmsgHandler = Handler (I.Origin, I.Target, Text) Text
 -- FIXME: how to use Profunctor’s dimap to implement this?
 onlyPrivmsg :: PrivmsgHandler -> LineHandler
 onlyPrivmsg (Handler handler) =
-  Handler $ \cfg -> \case
-    I.IrcLine (Just origin) (I.Privmsg target msg) -> do
-      (response, newHandler) <- handler cfg (origin, target, msg)
-      let replyTo = if I.isChannel target then target else I.nick origin
-      let realResponse = I.Privmsg replyTo <$> response
-      return (realResponse, onlyPrivmsg newHandler)
-    _ -> return (Nothing, onlyPrivmsg $ Handler handler)
+  Handler $ \cfg ->
+    \case
+      I.IrcLine (Just origin) (I.Privmsg target msg) -> do
+        (response, newHandler) <- handler cfg (origin, target, msg)
+        let replyTo =
+              if I.isChannel target
+                then target
+                else I.nick origin
+        let realResponse = I.Privmsg replyTo <$> response
+        return (realResponse, onlyPrivmsg newHandler)
+      _ -> return (Nothing, onlyPrivmsg $ Handler handler)
 
 onlyPrivmsgRespondWithNotice :: PrivmsgHandler -> LineHandler
-onlyPrivmsgRespondWithNotice privmsg =
-  dimap id g $ onlyPrivmsg privmsg
+onlyPrivmsgRespondWithNotice privmsg = dimap id g $ onlyPrivmsg privmsg
   where
     g (I.Privmsg t m) = I.Notice t m
     g a = a
@@ -90,17 +92,22 @@ discardException action =
     return Nothing
 
 discardError :: Either a b -> Maybe b
-discardError = \case
-  Left  _ -> Nothing
-  Right b -> Just b
+discardError =
+  \case
+    Left _ -> Nothing
+    Right b -> Just b
 
 fakeChromium :: Request -> Request
 fakeChromium r =
-  r { requestHeaders = [ ("Accept-Language", "en-US,en;q=0.8")
-                       , ("Accept",          "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8")
-                       , ("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36")
-                       ]
-    }
+  r
+  { requestHeaders =
+      [ ("Accept-Language", "en-US,en;q=0.8")
+      , ( "Accept"
+        , "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8")
+      , ( "User-Agent"
+        , "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36")
+      ]
+  }
 
 decodeHtmlEntities :: Text -> Text
 decodeHtmlEntities = TL.toStrict . TLB.toLazyText . htmlEncodedText

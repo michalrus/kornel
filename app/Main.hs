@@ -1,6 +1,6 @@
 module Main
-       ( main
-       ) where
+  ( main
+  ) where
 
 import qualified Kornel.Executable as K
 

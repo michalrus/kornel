@@ -1,21 +1,22 @@
 module Kornel.LineHandler.Slap
-       ( handle
-       ) where
+  ( handle
+  ) where
 
-import Kornel.LineHandler
 import Control.Monad
+import Data.Attoparsec.Text as P
 import Data.Monoid ((<>))
 import Data.Text as T
-import Data.Attoparsec.Text as P
+import Kornel.LineHandler
 
 handle :: LineHandler
 handle = onlyPrivmsg handleP
   where
-    handleP = Handler $ \_ (_, _, msg) -> do
-      let nicks = runParser cmdParser msg
-      let renderedReasons = reasons <$> nicks
-      reason <- join <$> randomElem `traverse` renderedReasons
-      return (reason, handleP)
+    handleP =
+      Handler $ \_ (_, _, msg) -> do
+        let nicks = runParser cmdParser msg
+        let renderedReasons = reasons <$> nicks
+        reason <- join <$> randomElem `traverse` renderedReasons
+        return (reason, handleP)
 
 cmdParser :: Parser [Text]
 cmdParser = skipSpace *> asciiCI "@slap" *> many1 nick
@@ -24,6 +25,7 @@ cmdParser = skipSpace *> asciiCI "@slap" *> many1 nick
 
 -- | Reasons taken from the wonderful lambdabot. ♥
 {-# ANN reasons ("HLint: ignore Redundant $" :: String) #-}
+
 reasons :: [Text] -> [Text]
 reasons nicks =
   [ me $ "slaps " <> x <> "."
@@ -50,7 +52,8 @@ reasons nicks =
   , me $ "places her fist firmly on " <> px <> " jaw."
   , me $ "locks up " <> x <> " in a Monad."
   , me $ "submits " <> px <> " email address to a dozen spam lists."
-  , me $ "moulds " <> x <> " into a delicious cookie, and places it in her oven."
+  , me $
+    "moulds " <> x <> " into a delicious cookie, and places it in her oven."
   , me $ "will count to five…"
   , me $ "jabs " <> x <> " with a C pointer."
   , me $ "is overcome by a sudden desire to hurt " <> x <> "."
@@ -60,7 +63,11 @@ reasons nicks =
   , me $ "hits " <> x <> " with an assortment of kitchen utensils."
   , me $ "slaps " <> x <> " with a slab of concrete."
   , me $ "puts on her slapping gloves, and slaps " <> x <> "."
-  , me $ "decomposes " <> x <> " into several parts using the Banach-Tarski theorem and reassembles them to get two copies of " <> x <> "!"
+  , me $
+    "decomposes " <> x <>
+    " into several parts using the Banach-Tarski theorem and reassembles them to get two copies of " <>
+    x <>
+    "!"
   ]
   where
     x = listPeople nicks
@@ -68,14 +75,14 @@ reasons nicks =
     me = meAction
 
 --8<----------------- TODO: move to LineHandler? ----------------->8--
-
 possessive :: Text -> Text
 possessive x
- | T.last x == 's' = x <> "’"
- | otherwise       = x <> "’s"
+  | T.last x == 's' = x <> "’"
+  | otherwise = x <> "’s"
 
 listPeople :: [Text] -> Text
-listPeople = \case
-  [x]      -> x
-  [x1, x2] -> x1 <> " and " <> x2
-  xs       -> T.intercalate ", " (Prelude.init xs) <> ", and " <> Prelude.last xs
+listPeople =
+  \case
+    [x] -> x
+    [x1, x2] -> x1 <> " and " <> x2
+    xs -> T.intercalate ", " (Prelude.init xs) <> ", and " <> Prelude.last xs
