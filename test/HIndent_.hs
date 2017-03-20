@@ -18,10 +18,8 @@ import qualified System.IO as IO
 main :: IO ()
 main = do
   putStrLn ""
-  paths <- glob "**/*.hs"
-  putStrLn $ "paths == " ++ show paths
-  results <- mapM formatE paths
-  if all id results
+  results <- glob "**/*.hs" >>= mapM formatE
+  if and results
     then exitSuccess
     else exitFailure
 
