@@ -29,7 +29,7 @@ import Network.HTTP.Client (Request, requestHeaders)
 import HTMLEntities.Decoder (htmlEncodedText)
 import qualified Data.Text.Lazy.Builder as TLB
 
-data Handler a b = Handler (C.Config -> a -> IO (Maybe b, Handler a b))
+newtype Handler a b = Handler (C.Config -> a -> IO (Maybe b, Handler a b))
 
 instance Profunctor Handler where
   dimap f g (Handler fab) =
