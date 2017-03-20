@@ -1,11 +1,10 @@
-import Language.Haskell.HLint
-import System.Exit
+import Control.Monad (unless)
+import Language.Haskell.HLint (hlint)
+import System.Exit (exitFailure)
 import System.FilePath.Glob (glob)
 
 main :: IO ()
 main = do
   putStrLn ""
   hints <- glob "**/*.hs" >>= hlint
-  if null hints
-    then exitSuccess
-    else exitFailure
+  unless (null hints) exitFailure

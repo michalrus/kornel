@@ -11,7 +11,7 @@ import HIndent
 import HIndent.Types
 import Language.Haskell.Exts hiding (Style, style)
 import qualified System.Directory as IO
-import System.Exit
+import System.Exit (exitFailure)
 import System.FilePath.Glob (glob)
 import qualified System.IO as IO
 
@@ -19,9 +19,7 @@ main :: IO ()
 main = do
   putStrLn ""
   results <- glob "**/*.hs" >>= mapM formatE
-  if and results
-    then exitSuccess
-    else exitFailure
+  unless (and results) exitFailure
 
 formatE :: FilePath -> IO Bool
 formatE filepath =
