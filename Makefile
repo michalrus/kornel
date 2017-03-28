@@ -28,8 +28,6 @@ build.nix: build.cabal
 
 .PHONY: _unsafe_check_safety _unsafe_all _unsafe_build _unsafe_test _unsafe_autoformat
 
-find_hs := find . -name '*.hs' -a -not -path './.*' -a -not -path './dist/*'
-
 _unsafe_all: _unsafe_check_safety _unsafe_test
 
 _unsafe_build: _unsafe_check_safety _unsafe_autoformat
