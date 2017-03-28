@@ -2,17 +2,17 @@ module Kornel.LineHandler.Clojure
   ( handle
   ) where
 
-import Control.Applicative
-import Control.Monad
-import Data.Aeson
-import Data.Attoparsec.Text as P
-import Data.Maybe (fromMaybe)
-import Data.Text as T
-import Data.Text.Encoding (encodeUtf8)
-import GHC.Generics
-import Kornel.LineHandler
+import           Control.Applicative
+import           Control.Monad
+import           Data.Aeson
+import           Data.Attoparsec.Text    as P
+import           Data.Maybe              (fromMaybe)
+import           Data.Text               as T
+import           Data.Text.Encoding      (encodeUtf8)
+import           GHC.Generics
+import           Kornel.LineHandler
 import qualified Network.HTTP.Client.TLS as HTTPS
-import Network.HTTP.Simple
+import           Network.HTTP.Simple
 
 handle :: LineHandler
 handle = onlyPrivmsg handleP

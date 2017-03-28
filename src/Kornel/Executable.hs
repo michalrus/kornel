@@ -2,22 +2,23 @@ module Kornel.Executable
   ( main
   ) where
 
-import Control.Concurrent (forkIO, threadDelay, killThread)
-import Control.Concurrent.Chan
-import Control.Monad
-import Control.Monad.Loops (whileJust_)
-import qualified Control.Newtype as N
-import qualified Data.ByteString as BS
-import Data.Maybe (maybeToList)
-import Data.Text as Text -- bug in Intero?
-import Data.Text.Encoding (encodeUtf8)
-import qualified Data.Text.IO as TIO
-import Data.Traversable
-import qualified Data.UUID as UUID
-import qualified Data.UUID.V4 as UUID
-import qualified IrcParser as I
-import Kornel.CLI
-import Kornel.LineHandler
+import           Control.Concurrent              (forkIO, killThread,
+                                                  threadDelay)
+import           Control.Concurrent.Chan
+import           Control.Monad
+import           Control.Monad.Loops             (whileJust_)
+import qualified Control.Newtype                 as N
+import qualified Data.ByteString                 as BS
+import           Data.Maybe                      (maybeToList)
+import           Data.Text                       as Text
+import           Data.Text.Encoding              (encodeUtf8)
+import qualified Data.Text.IO                    as TIO
+import           Data.Traversable
+import qualified Data.UUID                       as UUID
+import qualified Data.UUID.V4                    as UUID
+import qualified IrcParser                       as I
+import           Kornel.CLI
+import           Kornel.LineHandler
 import qualified Kornel.LineHandler.Chatter
 import qualified Kornel.LineHandler.Clojure
 import qualified Kornel.LineHandler.Google
@@ -25,10 +26,10 @@ import qualified Kornel.LineHandler.Haskell
 import qualified Kornel.LineHandler.HttpSnippets
 import qualified Kornel.LineHandler.Scala
 import qualified Kornel.LineHandler.Slap
-import Network.Connection
-import System.IO
-import System.IO.Error
-import System.Timeout
+import           Network.Connection
+import           System.IO
+import           System.IO.Error
+import           System.Timeout
 
 main :: IO ()
 main = do

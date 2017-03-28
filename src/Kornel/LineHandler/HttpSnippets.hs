@@ -2,17 +2,17 @@ module Kornel.LineHandler.HttpSnippets
   ( handle
   ) where
 
-import Control.Monad
-import Data.ByteString
-import qualified Data.ByteString.Lazy as LBS
-import Data.Maybe (catMaybes, listToMaybe)
-import Data.Text as T
-import Data.Text.Encoding (encodeUtf8)
-import Kornel.CLI
-import Kornel.LineHandler
-import Network.HTTP.Client
+import           Control.Monad
+import           Data.ByteString
+import qualified Data.ByteString.Lazy    as LBS
+import           Data.Maybe              (catMaybes, listToMaybe)
+import           Data.Text               as T
+import           Data.Text.Encoding      (encodeUtf8)
+import           Kornel.CLI
+import           Kornel.LineHandler
+import           Network.HTTP.Client
 import qualified Network.HTTP.Client.TLS as HTTPS
-import Text.Regex.PCRE
+import           Text.Regex.PCRE
 
 handle :: LineHandler
 handle = onlyPrivmsgRespondWithNotice handleP

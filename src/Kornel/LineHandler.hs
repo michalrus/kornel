@@ -16,20 +16,20 @@ module Kornel.LineHandler
   ) where
 
 import qualified Control.Exception.Base as E
-import Data.Attoparsec.Text as P
-import Data.ByteString (ByteString)
-import Data.Monoid ((<>))
-import Data.Profunctor
-import Data.Text
-import Data.Text.Encoding (decodeUtf8With)
-import qualified Data.Text.Lazy as TL
+import           Data.Attoparsec.Text   as P
+import           Data.ByteString        (ByteString)
+import           Data.Monoid            ((<>))
+import           Data.Profunctor
+import           Data.Text
+import           Data.Text.Encoding     (decodeUtf8With)
+import qualified Data.Text.Lazy         as TL
 import qualified Data.Text.Lazy.Builder as TLB
-import HTMLEntities.Decoder (htmlEncodedText)
-import qualified IrcParser as I
-import qualified Kornel.CLI as C
-import Network.HTTP.Client (Request, requestHeaders)
-import System.IO
-import System.Random (randomRIO)
+import           HTMLEntities.Decoder   (htmlEncodedText)
+import qualified IrcParser              as I
+import qualified Kornel.CLI             as C
+import           Network.HTTP.Client    (Request, requestHeaders)
+import           System.IO
+import           System.Random          (randomRIO)
 
 newtype Handler a b =
   Handler (C.Config -> a -> IO (Maybe b, Handler a b))

@@ -11,13 +11,13 @@ module IrcParser
   , showCommand
   ) where
 
-import Control.Applicative
-import Control.Newtype as N
-import Data.Attoparsec.Text as P
-import Data.Semigroup ((<>))
-import Data.Text as T
-import GHC.Generics
-import Text.Printf (printf)
+import           Control.Applicative
+import           Control.Newtype      as N
+import           Data.Attoparsec.Text as P
+import           Data.Semigroup       ((<>))
+import           Data.Text            as T
+import           GHC.Generics
+import           Text.Printf          (printf)
 
 newtype Target =
   Target Text

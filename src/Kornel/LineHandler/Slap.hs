@@ -2,11 +2,11 @@ module Kornel.LineHandler.Slap
   ( handle
   ) where
 
-import Control.Monad
-import Data.Attoparsec.Text as P
-import Data.Monoid ((<>))
-import Data.Text as T
-import Kornel.LineHandler
+import           Control.Monad
+import           Data.Attoparsec.Text as P
+import           Data.Monoid          ((<>))
+import           Data.Text            as T
+import           Kornel.LineHandler
 
 handle :: LineHandler
 handle = onlyPrivmsg handleP

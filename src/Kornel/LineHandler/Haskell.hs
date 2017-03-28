@@ -2,12 +2,12 @@ module Kornel.LineHandler.Haskell
   ( handle
   ) where
 
-import Control.Applicative
-import Control.Monad
-import Data.Attoparsec.Text as P
-import Data.Semigroup ((<>))
-import Kornel.CLI as C
-import Kornel.LineHandler
+import           Control.Applicative
+import           Control.Monad
+import           Data.Attoparsec.Text        as P
+import           Data.Semigroup              ((<>))
+import           Kornel.CLI                  as C
+import           Kornel.LineHandler
 import qualified Kornel.LineHandler.BotProxy as Proxy
 
 handle :: LineHandler

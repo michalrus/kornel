@@ -4,11 +4,11 @@ module Kornel.CLI
   , LogLevel(..)
   ) where
 
-import Data.Semigroup ((<>))
-import Data.Text
-import qualified IrcParser as I
-import Network.Socket (HostName, PortNumber)
-import Options.Applicative
+import           Data.Semigroup      ((<>))
+import           Data.Text
+import qualified IrcParser           as I
+import           Network.Socket      (HostName, PortNumber)
+import           Options.Applicative
 
 data LogLevel
   = LogInfo

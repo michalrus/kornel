@@ -2,23 +2,23 @@ module Kornel.LineHandler.Chatter
   ( handle
   ) where
 
-import Control.Applicative
-import Control.Monad
-import Control.Newtype as N
-import Data.Aeson
-import Data.Attoparsec.Text as P
-import Data.Maybe (fromMaybe, maybe, isJust)
-import Data.Monoid ((<>))
-import Data.Text as T
-import Data.Text.Encoding (encodeUtf8)
-import qualified Data.Text.IO as TIO
-import Data.Traversable
-import GHC.Generics
-import qualified IrcParser as I
-import Kornel.CLI
-import Kornel.LineHandler
+import           Control.Applicative
+import           Control.Monad
+import           Control.Newtype         as N
+import           Data.Aeson
+import           Data.Attoparsec.Text    as P
+import           Data.Maybe              (fromMaybe, isJust, maybe)
+import           Data.Monoid             ((<>))
+import           Data.Text               as T
+import           Data.Text.Encoding      (encodeUtf8)
+import qualified Data.Text.IO            as TIO
+import           Data.Traversable
+import           GHC.Generics
+import qualified IrcParser               as I
+import           Kornel.CLI
+import           Kornel.LineHandler
 import qualified Network.HTTP.Client.TLS as HTTPS
-import Network.HTTP.Simple
+import           Network.HTTP.Simple
 
 data HState = HState
   { cleverState :: Maybe Text

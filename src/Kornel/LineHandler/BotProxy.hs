@@ -3,14 +3,14 @@ module Kornel.LineHandler.BotProxy
   , nextElem
   ) where
 
-import Control.Monad
-import Control.Monad.Zip
-import Data.Attoparsec.Text as P
-import Data.Maybe (listToMaybe)
-import Data.Text as T
-import qualified IrcParser as I
-import Kornel.CLI as C
-import Kornel.LineHandler
+import           Control.Monad
+import           Control.Monad.Zip
+import           Data.Attoparsec.Text as P
+import           Data.Maybe           (listToMaybe)
+import           Data.Text            as T
+import qualified IrcParser            as I
+import           Kornel.CLI           as C
+import           Kornel.LineHandler
 
 data HState = HState
   { lastReplyTo :: Maybe I.Target
