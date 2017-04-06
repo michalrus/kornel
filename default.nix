@@ -18,7 +18,7 @@ let
   build = compiler.callPackage ./build.nix {};
 
   env = lib.overrideDerivation build.env (oldAttrs: {
-    buildInputs = with compiler; [ cabal-install hlint hindent stylish-haskell ];
+    buildInputs = with compiler; [ cabal-install hlint hindent stylish-haskell intero ];
   });
 
 in

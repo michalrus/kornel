@@ -1,3 +1,6 @@
 /build.nix
 /result
 /dist
+
+# We’re not using Stack, but Intero uses these:
+.stack-work/
