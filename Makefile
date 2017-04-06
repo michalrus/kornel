@@ -21,7 +21,7 @@ clean:
 
 #——————————— Auto-generated files ——————————————————————————————————————————————
 
-build.nix: build.cabal
+build.nix: $(shell ls *.cabal)
 	nix-shell --pure -p cabal2nix --run "cabal2nix . > build.nix"
 
 #——————————— Don’t run these directly… probably ————————————————————————————————
