@@ -1,1 +1,1 @@
-{ isSafe ? "no" }: (import ./default.nix { inherit isSafe; }).env
+(import ./default.nix).env

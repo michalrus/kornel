@@ -1,30 +1,23 @@
-export NIX_PATH := $(shell cat NIX_PATH)
-
-#——————————— Proxies ———————————————————————————————————————————————————————————
-
 .PHONY: all ghci nix-build nix-shell clean
 
-all: build.nix
-	@nix-shell --pure --argstr isSafe yes --run "exec $(MAKE) isSafe=yes _unsafe_all"
+all:
+	@nix-shell --pure --run "exec $(MAKE) isSafe=yes _unsafe_all"
 
-ghci: build.nix
-	@nix-shell --pure --argstr isSafe yes --run "exec cabal repl"
-
-nix-build: build.nix
-	@nix-build --argstr isSafe yes
-
-nix-shell: build.nix
-	@nix-shell --argstr isSafe yes
+repl: ghci
+	@nix-shell --pure --run "exec cabal repl"
 
 clean:
-	rm -rv dist/ result build.nix || true
+	@nix-shell --pure --run "exec cabal clean"
 
-#——————————— Auto-generated files ——————————————————————————————————————————————
+autoformat:
+	@nix-shell --pure --run "exec $(MAKE) isSafe=yes _unsafe_autoformat"
 
-build.nix: $(shell ls *.cabal)
-	nix-shell --pure -p cabal2nix --run "cabal2nix . > build.nix"
+ci:
+	@nix-build
+
 
 #——————————— Don’t run these directly… probably ————————————————————————————————
+
 
 .PHONY: _unsafe_check_safety _unsafe_all _unsafe_build _unsafe_test _unsafe_autoformat
 
