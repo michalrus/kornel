@@ -1,8 +1,6 @@
 name:                kornel
 version:             0.1.0
--- synopsis:
--- description:
-homepage:            https://github.com/michalrus/kornel#readme
+homepage:            https://github.com/michalrus/kornel
 license:             Apache-2.0
 license-file:        LICENSE
 author:              Michal Rus

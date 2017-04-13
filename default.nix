@@ -10,6 +10,13 @@ let
 
 in with import nixpkgs {}; let
 
+  # Temporarily, let’s pick it from nixpkgs:master.
+  intero-nix-shim = (import (fetchFromGitHub {
+    owner = "NixOS"; repo = "nixpkgs";
+    rev = "7daec8a234da5b097544dd4fb3fa1d2012870d08";
+    sha256 = "13j482kskh90mcgdj6wjqbyd8yfyikfp5ipwvrissmshpsypi5sx";
+  }) {}).haskellPackages.intero-nix-shim;
+
   compiler = haskell.packages.ghc802.override {
     overrides = self: super: {
 
@@ -33,7 +40,7 @@ in with import nixpkgs {}; let
   in compiler.callCabal2nix pname src {};
 
   env = lib.overrideDerivation build.env (oldAttrs: {
-    buildInputs = with compiler; [ cabal-install hlint hindent stylish-haskell intero ];
+    buildInputs = with compiler; [ cabal-install hlint hindent stylish-haskell intero-nix-shim ];
   });
 
 in build // { inherit env; }
