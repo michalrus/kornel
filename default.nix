@@ -4,24 +4,13 @@ let
 
   nixpkgs = (import <nixpkgs> {}).pkgs.fetchFromGitHub {
     owner = "NixOS"; repo = "nixpkgs";
-    rev = "2839b101f927be5daab7948421de00a6f6c084ae";
-    sha256 = "0a863cc5462gn1vws87d4qn45zk22m64ri1ip67w0b1a9bmymqdh";
+    rev = "f0fac3b578086066b47360de17618448d066b30e";
+    sha256 = "1mpwdminwk1wzycwmgi2c2kwpbcfjwmxiakn7bmvvsaxb30gwyyb";
   };
 
 in with import nixpkgs {}; let
 
-  compiler = haskell.packages.ghc802.override {
-    overrides = self: super: {
-
-      "html-entities" = lib.overrideDerivation super.html-entities (oldAttrs: {
-        postPatch = ''
-          substituteInPlace html-entities.cabal \
-            --replace 'directory == 1.2.*' 'directory == 1.3.*'
-        '';
-      });
-
-    };
-  };
+  compiler = haskell.packages.ghc802;
 
   fmtInputs = (with haskellPackages; [ hlint hindent stylish-haskell ]);
 
