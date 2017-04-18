@@ -23,6 +23,8 @@ in with import nixpkgs {}; let
     };
   };
 
+  fmtInputs = (with haskellPackages; [ hlint hindent stylish-haskell ]);
+
   # TODO: Consider using `cabal sdist`? https://git.io/vSo8l
 
   build = let
@@ -30,10 +32,22 @@ in with import nixpkgs {}; let
          lib.all (i: toString i !=            path) [ ./.git ./dist ./result ]
       && lib.all (i:          i != baseNameOf path) [ ".stack-work" ])
       ./.;
-  in compiler.callCabal2nix pname src {};
+  in lib.overrideDerivation (compiler.callCabal2nix pname src {}) (oldAttrs: {
+    nativeBuildInputs = oldAttrs.nativeBuildInputs ++ fmtInputs;
+    preBuild = ''
+      hashRaw=$(${nix}/bin/nix-hash --type sha256 .)
+      make _autoformat
+      rm -r dist/autoformat
+      hashFmt=$(${nix}/bin/nix-hash --type sha256 .)
+      [ "$hashRaw" = "$hashFmt" ] || { echo >&2 'fatal: a file was commited unformatted' ; exit 1 ; }
+    '';
+    postBuild = ''
+      hlint .
+    '';
+  });
 
   env = lib.overrideDerivation build.env (oldAttrs: {
-    buildInputs = with compiler; [ cabal-install hlint hindent stylish-haskell ];
+    buildInputs = fmtInputs ++ (with compiler; [ cabal-install ]);
   });
 
 in build // { inherit env; }

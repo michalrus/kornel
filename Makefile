@@ -1,16 +1,16 @@
-.PHONY: all ghci nix-build nix-shell clean
+.PHONY: all repl clean autoformat ci
 
 all:
-	@nix-shell --pure --run "exec $(MAKE) isSafe=yes _unsafe_all"
+	@nix-shell --pure --run "exec $(MAKE) _all"
 
-repl: ghci
+repl:
 	@nix-shell --pure --run "exec cabal repl"
 
 clean:
 	@nix-shell --pure --run "exec cabal clean"
 
 autoformat:
-	@nix-shell --pure --run "exec $(MAKE) isSafe=yes _unsafe_autoformat"
+	@nix-shell --pure --run "exec $(MAKE) _autoformat"
 
 ci:
 	@nix-build
@@ -19,18 +19,18 @@ ci:
 #——————————— Don’t run these directly… probably ————————————————————————————————
 
 
-.PHONY: _unsafe_check_safety _unsafe_all _unsafe_build _unsafe_test _unsafe_autoformat
+.PHONY: _all _build _test _autoformat
 
-_unsafe_all: _unsafe_check_safety _unsafe_test
+_all: _test
 
-_unsafe_build: _unsafe_check_safety _unsafe_autoformat
+_build: _autoformat
 	@cabal build -j
 	@hlint .
 
-_unsafe_test: _unsafe_check_safety _unsafe_build
+_test: _build
 	@cabal test -j --show-details=direct
 
-_unsafe_autoformat: _unsafe_check_safety $(shell find . -name '*.hs' -a -not -path './.*' -a -not -path './dist/*' -printf 'dist/autoformat/%P_fmt\n')
+_autoformat: $(shell find . -name '*.hs' -a -not -path './.*' -a -not -path './dist/*' -printf 'dist/autoformat/%P_fmt\n')
 
 dist/autoformat/%_fmt: %
 	@echo "Formatting $<..."
@@ -39,9 +39,3 @@ dist/autoformat/%_fmt: %
 		&& mkdir -p $(dir $@) \
 		&& touch "$@" \
 		|| true # Let’s get to the real compilation errors.
-
-_unsafe_check_safety:
-ifeq ($(isSafe),yes)
-else
-	$(error Please, don’t call ‘_unsafe_*’ rules manually)
-endif
