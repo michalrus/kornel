@@ -39,4 +39,14 @@ in with import nixpkgs {}; let
     buildInputs = fmtInputs ++ (with compiler; [ cabal-install ]);
   });
 
-in build // { inherit env; }
+  hie = let
+    hie-nix = fetchFromGitHub {
+      owner = "domenkozar"; repo = "hie-nix";
+      rev = "2b7965f26009b43ecd65c2dcb4d15a53941b726e";
+      sha256 = "1b2mv9pvbzk0fy1zjchfmkayya9dg1kq4xk0dqm9bzphz2f4icsv";
+    };
+  in (import hie-nix {}).hie80.overrideAttrs (oldAttrs: {
+    postInstall = "echo ${hie-nix} >$out/prevent-ifd-gc";
+  });
+
+in build // { inherit env hie; }
