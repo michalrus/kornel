@@ -20,5 +20,26 @@ columns: 80
 newline: lf
 
 language_extensions:
+  - DataKinds
+  - DeriveGeneric
+  - DuplicateRecordFields
+  - ExistentialQuantification
+  - FlexibleContexts
+  - FlexibleInstances
+  - GADTs
+  - GeneralizedNewtypeDeriving
   - LambdaCase
+  - MultiParamTypeClasses
+  - NamedFieldPuns
+  - OverloadedLists
+  - OverloadedStrings
+  - PolyKinds
+  - QuasiQuotes
+  - RankNTypes
+  - RecordWildCards
   - ScopedTypeVariables
+  - TemplateHaskell
+  - TupleSections
+  - TypeApplications
+  - TypeFamilies
+  - TypeOperators

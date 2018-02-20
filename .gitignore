@@ -1,5 +1,8 @@
 /result
 /dist
+/dist-newstyle
 
-# We’re not using Stack, but Intero uses these:
-.stack-work/
+# Emacs
+.#*
+*~
+flycheck_*.*
