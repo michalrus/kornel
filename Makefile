@@ -1,41 +1,45 @@
-.PHONY: all repl clean autoformat ci
+.PHONY: local ci build lint run devloop autoformat autoformat-check
 
-all:
-	@nix-shell --pure --run "exec $(MAKE) _all"
+local: autoformat       build lint
+ci:    autoformat-check build lint
 
-repl:
-	@nix-shell --pure --run "exec cabal repl"
+sources=$(shell find . -name '*.hs' -a -not -path '*/.*' -a -not -path './dist/*' | sort)
 
-clean:
-	@nix-shell --pure --run "exec cabal clean"
+inShell=nix-shell --add-root dist/nix/shell.drv --indirect --pure --run
 
+build:
+	@nix-build -j$$(nproc)
+lint:
+	@$(inShell) 'exec $(MAKE) _lint'
+run:
+	@$(inShell) "exec $(MAKE) _run"
+devloop:
+	@$(inShell) "exec $(MAKE) opts='$(subst ','\'',$(testOpts))' -j$$(nproc) _devloop"
 autoformat:
-	@nix-shell --pure --run "exec $(MAKE) _autoformat"
-
-ci:
-	@nix-build
-
-
-#——————————— Don’t run these directly… probably ————————————————————————————————
+	@$(inShell) "exec $(MAKE) -j$$(nproc) _autoformat"
+autoformat-check: autoformat
+	@$(inShell) 'status=$$(git status --porcelain | grep -v "^M ") ; [ -z "$$status" ] || { printf >&2 "%s\n%s\n" "fatal: some files are unformatted (or repo unclean):" "$$status" ; exit 1 ; }'
 
 
-.PHONY: _all _build _test _autoformat
+#———————————————————————————————————nix-shell———————————————————————————————————
 
-_all: _test
 
-_build: _autoformat
-	@cabal build -j
-	@hlint .
+.PHONY: _autoformat _devloop _run _lint _test
 
-_test: _build
-	@cabal test -j --show-details=direct
-
-_autoformat: $(shell find . -name '*.hs' -a -not -path './.*' -a -not -path './dist/*' -printf 'dist/autoformat/%P_fmt\n')
+_autoformat: $(patsubst %,dist/autoformat/%_fmt,$(sources))
 
 dist/autoformat/%_fmt: %
 	@echo "Formatting $<..."
-	@hindent --line-length 80 "$<" \
+	@hindent --line-length 80 -XTypeApplications "$<" \
 		&& stylish-haskell --inplace "$<" \
-		&& mkdir -p $(dir $@) \
-		&& touch "$@" \
-		|| true # Let’s get to the real compilation errors.
+		&& mkdir -p "$(dir $@)" && touch "$@" \
+		|| true # we want to see real compilation errors
+
+_devloop:
+	watchexec -rs SIGKILL "export | grep -F WATCHEXEC ; exec $(MAKE) -j1 _test _lint _run"
+_run:
+	cabal run -j -- -c ./config/dev.config
+_lint:
+	@hlint $(sources)
+_test:
+	cabal test -j --show-details=streaming --test-option=--color=always '--test-options=$(subst ','\'',$(testOpts))'
