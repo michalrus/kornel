@@ -7,4 +7,4 @@ argv=( "${argv[@]/\'/\'\\\'\'}" )
 argv=( "${argv[@]/#/\'}" )
 argv=( "${argv[@]/%/\'}" )
 
-exec nix-shell --run "exec $(nix-build -o dist/nix/hie -A hie)/bin/hie ${argv[*]}"
+exec nix-shell --pure --run "exec $(nix-build -o dist/nix/hie -A hie)/bin/hie ${argv[*]}"

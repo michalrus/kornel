@@ -1,7 +1,5 @@
 let
 
-  pname = "kornel";
-
   nixpkgs = (import <nixpkgs> {}).pkgs.fetchFromGitHub {
     owner = "NixOS"; repo = "nixpkgs";
     rev = "f0fac3b578086066b47360de17618448d066b30e";
@@ -21,7 +19,7 @@ in with import nixpkgs {}; let
          lib.all (i: toString i !=            path) [ ./.git ./dist ./result ]
       && lib.all (i:          i != baseNameOf path) [ ".stack-work" ])
       ./.;
-  in lib.overrideDerivation (compiler.callCabal2nix pname src {}) (oldAttrs: {
+  in lib.overrideDerivation (compiler.callCabal2nix "kornel" src {}) (oldAttrs: {
     nativeBuildInputs = oldAttrs.nativeBuildInputs ++ fmtInputs;
     preBuild = ''
       hashRaw=$(${nix}/bin/nix-hash --type sha256 .)
