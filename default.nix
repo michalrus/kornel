@@ -2,8 +2,8 @@ let
 
   sources = rec {
     nixpkgs = import ./fetchNixpkgs.nix {
-      rev = "f0fac3b578086066b47360de17618448d066b30e";
-      sha256 = "0k0nxp13qdg53rcgr804529bnphqsb5v7rwzn47qq64nb147h011";
+      rev = "327a84749ed48a20736fdf20b9dd4f5723b01912";
+      sha256 = "0sdzl5vw3qlwhlfhjhsdzffc751hipfcmrgajsxpv3l5lykjvdsq";
     };
     nixpkgsWatchexec = import ./fetchNixpkgs.nix {
       rev = "1bccb28904ff1c1ea2fb6278fc950ebd5c8aed1d";
@@ -33,12 +33,16 @@ let
 
   watchexec = (import sources.nixpkgsWatchexec {}).watchexec;
 
-  hie = (import sources.hie-nix {}).hie80;
+  hie = (import sources.hie-nix {}).hie82;
 
 in with (import sources.nixpkgs {}); with (ulib pkgs); let
 
-  haskellPackagesWithOverrides = haskell.packages.ghc802.override {
+  haskellPackagesWithOverrides = haskell.packages.ghc822.override {
     overrides = self: super: {
+      html-entities = haskell.lib.overrideCabal super.html-entities (drv: {
+        setupHaskellDepends = with self; [ base Cabal cabal-doctest ]; # https://github.com/nikita-volkov/html-entities/issues/8
+      });
+
       # To make certain IFD deps survive GC.
       haskell-prevent-ifd-gc = [] ++
         buildPackages.haskellPackages.cabal2nix.all;
