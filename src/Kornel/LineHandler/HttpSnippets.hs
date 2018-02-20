@@ -2,16 +2,13 @@ module Kornel.LineHandler.HttpSnippets
   ( handle
   ) where
 
-import           Control.Monad
-import           Data.ByteString
 import qualified Data.ByteString.Lazy    as LBS
-import           Data.Maybe              (catMaybes, listToMaybe)
-import           Data.Text               as T
-import           Data.Text.Encoding      (encodeUtf8)
+import qualified Data.Text               as T
 import           Kornel.CLI
 import           Kornel.LineHandler
 import           Network.HTTP.Client
 import qualified Network.HTTP.Client.TLS as HTTPS
+import           Prelude                 hiding (Handler, handle)
 import           Text.Regex.PCRE
 
 handle :: LineHandler
@@ -34,11 +31,11 @@ snippets cfg text = do
 getSnippet :: Int -> Text -> IO (Maybe Text)
 getSnippet atMost url = do
   manager <- HTTPS.newTlsManager
-  request <- fakeChromium <$> parseRequest (T.unpack url)
+  request <- fakeChromium <$> parseRequest (unpack url)
   response <-
     withResponse request manager $ \r -> brReadSome (responseBody r) atMost
   let title = findTitle $ LBS.toStrict response
-  return $ strip . decodeHtmlEntities . decodeUtf8_ <$> title
+  return $ T.strip . decodeHtmlEntities . decodeUtf8_ <$> title
 
 findTitle :: ByteString -> Maybe ByteString
 findTitle haystack = listToMaybe $ Prelude.drop 1 matches

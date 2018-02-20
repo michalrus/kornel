@@ -4,8 +4,7 @@ module Kornel.CLI
   , LogLevel(..)
   ) where
 
-import           Data.Semigroup      ((<>))
-import           Data.Text
+import qualified Data.Text           as T
 import qualified IrcParser           as I
 import           Network.Socket      (HostName, PortNumber)
 import           Options.Applicative
@@ -49,7 +48,7 @@ configParser =
   flag LogInfo LogDebug (long "verbose")
   where
     text = pack <$> str
-    texts = splitOn "," <$> text
+    texts = T.splitOn "," <$> text
     target = I.Target <$> text
     targets = fmap I.Target <$> texts
 

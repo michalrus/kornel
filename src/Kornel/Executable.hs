@@ -2,18 +2,13 @@ module Kornel.Executable
   ( main
   ) where
 
-import           Control.Concurrent              (forkIO, killThread,
-                                                  threadDelay)
-import           Control.Concurrent.Chan
-import           Control.Monad
+import qualified Control.Concurrent              as Unsafe
 import           Control.Monad.Loops             (whileJust_)
 import qualified Control.Newtype                 as N
 import qualified Data.ByteString                 as BS
 import           Data.Maybe                      (maybeToList)
-import           Data.Text                       as Text
-import           Data.Text.Encoding              (encodeUtf8)
+import qualified Data.Text                       as T
 import qualified Data.Text.IO                    as TIO
-import           Data.Traversable
 import qualified Data.UUID                       as UUID
 import qualified Data.UUID.V4                    as UUID
 import qualified IrcParser                       as I
@@ -27,22 +22,24 @@ import qualified Kornel.LineHandler.HttpSnippets
 import qualified Kornel.LineHandler.Scala
 import qualified Kornel.LineHandler.Slap
 import           Network.Connection
-import           System.IO
-import           System.IO.Error
+import           Prelude                         hiding (Handler)
+import qualified System.IO                       as IO
+
+-- import           System.IO.Error
 import           System.Timeout
 
 main :: IO ()
 main = do
-  mapM_ (`hSetEncoding` utf8) [stdout, stdin, stderr]
+  mapM_ @[_] (`IO.hSetEncoding` IO.utf8) [stdout, stdin, stderr]
   readConfig >>= runConfig
 
 runConfig :: Config -> IO ()
 runConfig cfg = do
   ctx <- initConnectionContext
   forever $ do
-    hPutStrLn stderr "Starting new session…"
+    IO.hPutStrLn stderr "Starting new session…"
     void $ discardException (runSession cfg ctx)
-    hPutStrLn stderr "Session ended."
+    IO.hPutStrLn stderr "Session ended."
     threadDelay $ 10 * 1000 * 1000 -- µs
 
 data IpcQueue
@@ -72,22 +69,19 @@ runSession cfg ctx = do
   let pingEvery = 20 * 1000 * 1000 -- µs
   -- parse & enqueue lines from server
   _ <-
-    forkIO $ do
+    Unsafe.forkIO $ do
       let timedProcessLine =
             join <$> timeout (2 * pingEvery) (processRawLine con)
       whileJust_ timedProcessLine $ writeChan ipc . QServerLine
       writeChan ipc QQuit
   -- send our PINGs
   thrPing <-
-    forkIO $
-    forever $ do
+    Unsafe.forkIO . forever $ do
       threadDelay pingEvery
       uuid <- UUID.nextRandom
-      writeChan ipc $ QClientLine $ I.Ping $ pack $ UUID.toString uuid
+      writeChan ipc . QClientLine . I.Ping . pack $ UUID.toString uuid
   -- process the queue
-  void $
-    discardException $
-    iterateWhileJust (pure allHandlers) $
+  void . discardException . iterateWhileJust (pure allHandlers) $
     processQueue cfg con (readChan ipc) (writeChan ipc)
   connectionClose con
   killThread thrPing
@@ -99,9 +93,7 @@ editNth xs n x =
     then Prelude.take n xs ++ [x] ++ Prelude.drop (n + 1) xs
     else xs
 
-iterateWhileJust
-  :: Monad m
-  => m a -> (a -> m (Maybe a)) -> m ()
+iterateWhileJust :: Monad m => m a -> (a -> m (Maybe a)) -> m ()
 iterateWhileJust action run = action >>= go
   where
     go an =
@@ -109,8 +101,8 @@ iterateWhileJust action run = action >>= go
         Just an1 -> go an1
         Nothing -> return ()
 
-processQueue
-  :: Config
+processQueue ::
+     Config
   -> Connection
   -> IO IpcQueue
   -> (IpcQueue -> IO ())
@@ -129,7 +121,7 @@ processQueue cfg con dequeue enqueue handlers =
         -- running each handler for each message on its own thread
        -> do
         _ <-
-          forkIO $ do
+          Unsafe.forkIO $ do
             (resp, newHandler) <- handler cfg ln
             enqueue $ QUpdateHandler handlerId newHandler
             mapM_ (enqueue . QClientLine) resp
@@ -142,23 +134,24 @@ login cfg ctx = do
     connectTo
       ctx
       ConnectionParams
-      { connectionHostname = serverHost cfg
-      , connectionPort = serverPort cfg
-      , connectionUseSecure =
-          if not $ usingSSL cfg
-            then Nothing
-            else Just
-                   TLSSettingsSimple
-                   { settingDisableCertificateValidation = False
-                   , settingDisableSession = True
-                   , settingUseServerName = True
-                   }
-      , connectionUseSocks = Nothing
-      }
+        { connectionHostname = serverHost cfg
+        , connectionPort = serverPort cfg
+        , connectionUseSecure =
+            if not $ usingSSL cfg
+              then Nothing
+              else Just
+                     TLSSettingsSimple
+                       { settingDisableCertificateValidation = False
+                       , settingDisableSession = True
+                       , settingUseServerName = True
+                       }
+        , connectionUseSocks = Nothing
+        }
   nickservCmd <-
-    for (nickservPasswordFile cfg) $ \path -> do
-      pw <- strip <$> TIO.readFile path
-      return $ I.Privmsg (I.Target "NickServ") (append "IDENTIFY " pw)
+    for
+      (nickservPasswordFile cfg)
+      (map (I.Privmsg (I.Target "NickServ") . T.append "IDENTIFY " . T.strip) .
+       TIO.readFile)
   mapM_ (sendCommand (verbose cfg) con) $
     [ I.Nick $ nick cfg
     , I.User
@@ -178,10 +171,10 @@ processRawLine con =
          then return Nothing
          else ioError e) $ do
     rawBytes <- connectionGetLine 1024 con
-    raw <- dropWhileEnd isEndOfLine . decodeUtf8_ <$> pure rawBytes
+    raw <- T.dropWhileEnd isEndOfLine . decodeUtf8_ <$> pure rawBytes
     case I.readMessage raw of
       Left err -> do
-        hPutStrLn stderr $
+        IO.hPutStrLn stderr $
           "Failed to parse message ‘" ++
           show raw ++ "’ with ‘" ++ show err ++ "’"
         return Nothing
@@ -191,10 +184,10 @@ processRawLine con =
 
 sendCommand :: LogLevel -> Connection -> I.IrcCommand -> IO ()
 sendCommand verbosely con cmd = do
-  when (verbosely == LogDebug) $ putStrLn $ "-> " ++ show cmd
+  when (verbosely == LogDebug) . putStrLn $ "-> " ++ tshow cmd
   connectionPut con $ BS.append bytes "\r\n"
   where
-    bytes = BS.take 510 $ encodeUtf8 $ I.showCommand cmd
+    bytes = BS.take 510 . encodeUtf8 $ I.showCommand cmd
 
 handlePing :: LineHandler
 handlePing =
@@ -208,6 +201,6 @@ handleLogging =
   Handler $ \cfg ->
     \case
       I.IrcLine origin msg -> do
-        when (verbose cfg == LogDebug) $
-          putStrLn $ "<- " ++ show origin ++ " - " ++ show msg
+        when (verbose cfg == LogDebug) . putStrLn $
+          "<- " ++ tshow origin ++ " - " ++ tshow msg
         return (Nothing, handleLogging)

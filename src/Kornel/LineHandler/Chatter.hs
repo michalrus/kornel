@@ -2,23 +2,18 @@ module Kornel.LineHandler.Chatter
   ( handle
   ) where
 
-import           Control.Applicative
-import           Control.Monad
 import           Control.Newtype         as N
 import           Data.Aeson
 import           Data.Attoparsec.Text    as P
 import           Data.Maybe              (fromMaybe, isJust, maybe)
-import           Data.Monoid             ((<>))
-import           Data.Text               as T
-import           Data.Text.Encoding      (encodeUtf8)
+import qualified Data.Text               as T
 import qualified Data.Text.IO            as TIO
-import           Data.Traversable
-import           GHC.Generics
 import qualified IrcParser               as I
 import           Kornel.CLI
 import           Kornel.LineHandler
 import qualified Network.HTTP.Client.TLS as HTTPS
 import           Network.HTTP.Simple
+import           Prelude                 hiding (Handler, handle)
 
 data HState = HState
   { cleverState :: Maybe Text
@@ -36,7 +31,7 @@ data CleverbotResponse = CleverbotResponse
 instance FromJSON CleverbotResponse
 
 handle :: LineHandler
-handle = onlyPrivmsg $ handle' $ HState Nothing Nothing
+handle = onlyPrivmsg . handle' $ HState Nothing Nothing
   where
     handle' :: HState -> PrivmsgHandler
     handle' state =
@@ -44,19 +39,19 @@ handle = onlyPrivmsg $ handle' $ HState Nothing Nothing
         let isToMe = toUpper myNick `isInfixOf` toUpper msg
               where
                 myNick = N.unpack $ nick cfg
-            highlight t = theirNick <> ": " <> t
+            highlight t = theirNick ++ ": " ++ t
               where
                 theirNick = N.unpack $ I.nick origin
-        in if isToMe
-             then do
-               let question =
-                     fromMaybe msg $ runParser (stripHighlight $ nick cfg) msg
-               stateWithKey <- tryToLoadKey cfg state
-               (nextState, answer) <-
-                 fromMaybe (state, Nothing) <$>
-                 discardException (chatter stateWithKey question)
-               return (highlight <$> answer, handle' nextState)
-             else return (Nothing, handle' state)
+         in if isToMe
+              then do
+                let question =
+                      fromMaybe msg $ runParser (stripHighlight $ nick cfg) msg
+                stateWithKey <- tryToLoadKey cfg state
+                (nextState, answer) <-
+                  fromMaybe (state, Nothing) <$>
+                  discardException (chatter stateWithKey question)
+                return (highlight <$> answer, handle' nextState)
+              else return (Nothing, handle' state)
 
 tryToLoadKey :: Config -> HState -> IO HState
 tryToLoadKey cfg state =
@@ -66,7 +61,7 @@ tryToLoadKey cfg state =
       cbApiKey <-
         join <$>
         discardException
-          (for (cleverBotApiKeyFile cfg) $ \p -> strip <$> TIO.readFile p)
+          (for (cleverBotApiKeyFile cfg) (map T.strip . TIO.readFile))
       return $ state {apiKey = cbApiKey}
 
 stripHighlight :: I.Target -> Parser Text

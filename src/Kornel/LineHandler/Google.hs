@@ -3,16 +3,12 @@ module Kornel.LineHandler.Google
   , google
   ) where
 
-import           Control.Monad
-import           Data.Attoparsec.Text    as P
-import           Data.ByteString         as BS
-import qualified Data.ByteString.Lazy    as LBS
-import           Data.Semigroup          ((<>))
-import           Data.Text               as T
-import           Data.Text.Encoding      (encodeUtf8)
+import qualified Data.Attoparsec.Text    as P
+import qualified Data.Text               as T
 import           Kornel.LineHandler
 import qualified Network.HTTP.Client.TLS as HTTPS
 import           Network.HTTP.Simple
+import           Prelude                 hiding (Handler, handle)
 import           Text.Regex.PCRE
 
 handle :: LineHandler
@@ -24,8 +20,9 @@ handle = onlyPrivmsg handleP
         response <- join <$> discardException (join <$> google `traverse` query)
         return (response, handleP)
 
-cmdParser :: Parser Text
-cmdParser = skipSpace *> asciiCI "@google" *> skip isHorizontalSpace *> takeText
+cmdParser :: P.Parser Text
+cmdParser =
+  P.skipSpace *> P.asciiCI "@google" *> P.skip P.isHorizontalSpace *> P.takeText
 
 google :: Text -> IO (Maybe Text)
 google query = do
@@ -39,27 +36,27 @@ google query = do
           , ("ie", Just "UTF-8")
           ] $
         "https://www.google.com/search"
-  response <- LBS.toStrict . getResponseBody <$> httpLBS request
+  response <- toStrict . getResponseBody <$> httpLBS request
   let result = firstResult response
-  return $ (\(GResult u t) -> "“" <> t <> "” — " <> u) <$> result
+  return $ (\(GResult u t) -> "“" ++ t ++ "” — " ++ u) <$> result
 
 data GResult = GResult
   { url :: Text
   , title :: Text
   } deriving (Show)
 
-firstResult :: BS.ByteString -> Maybe GResult
+firstResult :: ByteString -> Maybe GResult
 firstResult input =
   case parts of
     [_, u, t] ->
       Just
         GResult
-        { url = strip $ decodeUtf8_ u
-        , title = strip $ decodeHtmlEntities $ decodeUtf8_ t
-        }
+          { url = T.strip $ decodeUtf8_ u
+          , title = T.strip . decodeHtmlEntities . decodeUtf8_ $ t
+          }
     _ -> Nothing
   where
-    first :: ByteString = input =~ ("(?i)<h3.*?</h3>" :: ByteString)
+    first' :: ByteString = input =~ ("(?i)<h3.*?</h3>" :: ByteString)
     parts :: [ByteString] =
       getAllTextSubmatches $
-      first =~ ("(?i)<a .*?href=\"(.*?)\".*?>(.*?)<" :: ByteString)
+      first' =~ ("(?i)<a .*?href=\"(.*?)\".*?>(.*?)<" :: ByteString)

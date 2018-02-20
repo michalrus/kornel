@@ -2,13 +2,11 @@ module Kornel.LineHandler.Haskell
   ( handle
   ) where
 
-import           Control.Applicative
-import           Control.Monad
 import           Data.Attoparsec.Text        as P
-import           Data.Semigroup              ((<>))
 import           Kornel.CLI                  as C
 import           Kornel.LineHandler
 import qualified Kornel.LineHandler.BotProxy as Proxy
+import           Prelude                     hiding (Handler, handle)
 
 handle :: LineHandler
 handle =
@@ -16,21 +14,20 @@ handle =
     skipSpace
     (asciiCI "@haskell" <|> asciiCI "@hs") *> spc
     command <-
-      ((asciiCI ":type" <|> asciiCI ":t") *> spc *> pure "@type") <|>
-      ((asciiCI ":kind" <|> asciiCI ":k") *> spc *> pure "@kind") <|>
-      (asciiCI ":pl" *> spc *> pure "@pl") <|>
-      (asciiCI ":pointful" *> spc *> pure "@pointful") <|>
-      (asciiCI ":free" *> spc *> pure "@free") <|>
-      (asciiCI ":instances" *> spc *> pure "@instances") <|>
-      (asciiCI ":hoogle" *> spc *> pure "@hoogle") <|>
-      (asciiCI ":index" *> spc *> pure "@index") <|>
-      (asciiCI ":djinn" *> spc *> pure "@djinn") <|>
-      (asciiCI ":undo" *> spc *> pure "@undo") <|>
-      (asciiCI ":unmtl" *> spc *> pure "@unmtl") <|>
-      ((asciiCI ":source" <|> asciiCI ":src" <|> asciiCI ":s") *> spc *>
-       pure "@src") <|>
+      ((asciiCI ":type" <|> asciiCI ":t") *> spc $> "@type") <|>
+      ((asciiCI ":kind" <|> asciiCI ":k") *> spc $> "@kind") <|>
+      (asciiCI ":pl" *> spc $> "@pl") <|>
+      (asciiCI ":pointful" *> spc $> "@pointful") <|>
+      (asciiCI ":free" *> spc $> "@free") <|>
+      (asciiCI ":instances" *> spc $> "@instances") <|>
+      (asciiCI ":hoogle" *> spc $> "@hoogle") <|>
+      (asciiCI ":index" *> spc $> "@index") <|>
+      (asciiCI ":djinn" *> spc $> "@djinn") <|>
+      (asciiCI ":undo" *> spc $> "@undo") <|>
+      (asciiCI ":unmtl" *> spc $> "@unmtl") <|>
+      ((asciiCI ":source" <|> asciiCI ":src" <|> asciiCI ":s") *> spc $> "@src") <|>
       pure ">"
     expr <- takeText
-    return (command <> " " <> expr)
+    return (command ++ " " ++ expr)
   where
     spc = void . many1 $ skip isHorizontalSpace

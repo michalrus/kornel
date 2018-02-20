@@ -39,6 +39,8 @@ in with (import sources.nixpkgs {}); with (ulib pkgs); let
 
   haskellPackagesWithOverrides = haskell.packages.ghc822.override {
     overrides = self: super: {
+      prelude = self.callCabal2nix "prelude" ./prelude {};
+
       html-entities = haskell.lib.overrideCabal super.html-entities (drv: {
         setupHaskellDepends = with self; [ base Cabal cabal-doctest ]; # https://github.com/nikita-volkov/html-entities/issues/8
       });

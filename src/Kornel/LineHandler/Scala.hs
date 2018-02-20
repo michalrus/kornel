@@ -2,13 +2,11 @@ module Kornel.LineHandler.Scala
   ( handle
   ) where
 
-import           Control.Applicative
-import           Control.Monad
 import           Data.Attoparsec.Text        as P
-import           Data.Semigroup              ((<>))
 import           Kornel.CLI                  as C
 import           Kornel.LineHandler
 import qualified Kornel.LineHandler.BotProxy as Proxy
+import           Prelude                     hiding (Handler, handle)
 
 handle :: LineHandler
 handle =
@@ -16,7 +14,7 @@ handle =
     skipSpace
     asciiCI "@scala" *> spc
     command <-
-      ((asciiCI ":type" <|> asciiCI ":t") *> spc *> pure "!type") <|> pure "!"
+      ((asciiCI ":type" <|> asciiCI ":t") *> spc $> "!type") <|> pure "!"
     expr <- takeText
     return (command <> " " <> expr)
   where

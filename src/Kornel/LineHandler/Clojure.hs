@@ -2,17 +2,12 @@ module Kornel.LineHandler.Clojure
   ( handle
   ) where
 
-import           Control.Applicative
-import           Control.Monad
 import           Data.Aeson
-import           Data.Attoparsec.Text    as P
-import           Data.Maybe              (fromMaybe)
-import           Data.Text               as T
-import           Data.Text.Encoding      (encodeUtf8)
-import           GHC.Generics
+import qualified Data.Attoparsec.Text    as P
 import           Kornel.LineHandler
 import qualified Network.HTTP.Client.TLS as HTTPS
 import           Network.HTTP.Simple
+import           Prelude                 hiding (Handler, handle)
 
 handle :: LineHandler
 handle = onlyPrivmsg handleP
@@ -23,10 +18,11 @@ handle = onlyPrivmsg handleP
         res <- join <$> discardException (join <$> eval `traverse` sexpr)
         return (res, handleP)
 
-cmdParser :: Parser Text
+cmdParser :: P.Parser Text
 cmdParser =
-  skipSpace *> (asciiCI "@clojure" <|> asciiCI "@clj") *> skip isHorizontalSpace *>
-  takeText
+  P.skipSpace *> (P.asciiCI "@clojure" <|> P.asciiCI "@clj") *>
+  P.skip P.isHorizontalSpace *>
+  P.takeText
 
 data TryCljResponse = TryCljResponse
   { result :: Maybe Text

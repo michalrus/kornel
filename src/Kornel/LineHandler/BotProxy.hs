@@ -7,10 +7,10 @@ import           Control.Monad
 import           Control.Monad.Zip
 import           Data.Attoparsec.Text as P
 import           Data.Maybe           (listToMaybe)
-import           Data.Text            as T
 import qualified IrcParser            as I
 import           Kornel.CLI           as C
 import           Kornel.LineHandler
+import           Prelude              hiding (Handler, handle)
 
 data HState = HState
   { lastReplyTo :: Maybe I.Target
@@ -41,10 +41,10 @@ handle botNicks commandParser = handle' $ HState Nothing Nothing Nothing
                     ( (`I.Privmsg` command) <$> bot
                     , handle' $
                       state
-                      { lastReplyTo = Just replyTo
-                      , lastBotNick = bot
-                      , lastBotInquiry = Just command
-                      })
+                        { lastReplyTo = Just replyTo
+                        , lastBotNick = bot
+                        , lastBotInquiry = Just command
+                        })
                 _ -> return (Nothing, handle' state)
           I.IrcLine _ (I.NumericCommand 401 (_:target:_))
             | (Just . I.Target) target == lastBotNick state -> do
@@ -59,15 +59,13 @@ handle botNicks commandParser = handle' $ HState Nothing Nothing Nothing
                     ( Nothing
                     , handle'
                         state
-                        { lastReplyTo = Nothing
-                        , lastBotNick = Nothing
-                        , lastBotInquiry = Nothing
-                        })
+                          { lastReplyTo = Nothing
+                          , lastBotNick = Nothing
+                          , lastBotInquiry = Nothing
+                          })
           _ -> return (Nothing, handle' state)
 
-nextElem
-  :: Eq a
-  => [a] -> a -> Maybe a
+nextElem :: Eq a => [a] -> a -> Maybe a
 nextElem xs after
   | after `notElem` xs = listToMaybe xs
   | otherwise =

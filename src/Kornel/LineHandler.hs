@@ -18,9 +18,8 @@ module Kornel.LineHandler
 import qualified Control.Exception.Base as E
 import           Data.Attoparsec.Text   as P
 import           Data.ByteString        (ByteString)
-import           Data.Monoid            ((<>))
+import qualified Data.List              as Unsafe
 import           Data.Profunctor
-import           Data.Text
 import           Data.Text.Encoding     (decodeUtf8With)
 import qualified Data.Text.Lazy         as TL
 import qualified Data.Text.Lazy.Builder as TLB
@@ -28,6 +27,7 @@ import           HTMLEntities.Decoder   (htmlEncodedText)
 import qualified IrcParser              as I
 import qualified Kornel.CLI             as C
 import           Network.HTTP.Client    (Request, requestHeaders)
+import           Prelude                hiding (Handler)
 import           System.IO
 import           System.Random          (randomRIO)
 
@@ -77,7 +77,7 @@ onlyPrivmsgRespondWithNotice privmsg = dimap id g $ onlyPrivmsg privmsg
 
 randomElem :: [a] -> IO (Maybe a)
 randomElem [] = pure Nothing
-randomElem xs = Just . (!!) xs <$> randomRIO (0, Prelude.length xs - 1)
+randomElem xs = Just . (Unsafe.!!) xs <$> randomRIO (0, length xs - 1)
 
 meAction :: Text -> Text
 meAction act = "\001ACTION " <> act <> "\001"
@@ -100,13 +100,13 @@ discardError =
 fakeChromium :: Request -> Request
 fakeChromium r =
   r
-  { requestHeaders =
-      [ ("Accept-Language", "en-US,en;q=0.8")
-      , ( "Accept"
-        , "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
-      , ("User-Agent", "kornel +https://github.com/michalrus/kornel")
-      ]
-  }
+    { requestHeaders =
+        [ ("Accept-Language", "en-US,en;q=0.8")
+        , ( "Accept"
+          , "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+        , ("User-Agent", "kornel +https://github.com/michalrus/kornel")
+        ]
+    }
 
 decodeHtmlEntities :: Text -> Text
 decodeHtmlEntities = TL.toStrict . TLB.toLazyText . htmlEncodedText

@@ -11,12 +11,11 @@ module IrcParser
   , showCommand
   ) where
 
-import           Control.Applicative
-import           Control.Newtype      as N
+import           Control.Newtype      (Newtype)
+import qualified Control.Newtype      as N
 import           Data.Attoparsec.Text as P
-import           Data.Semigroup       ((<>))
-import           Data.Text            as T
-import           GHC.Generics
+import qualified Data.List            as Unsafe
+import qualified Data.Text            as T
 import           Text.Printf          (printf)
 
 newtype Target =
@@ -44,7 +43,7 @@ newtype Hostname =
 instance Newtype Hostname
 
 isChannel :: Target -> Bool
-isChannel (Target s) = Prelude.any (`isPrefixOf` s) ["#", "!", "&"]
+isChannel (Target s) = any @[_] (`isPrefixOf` s) ["#", "!", "&"]
 
 data Origin = Origin
   { nick :: Target
@@ -85,25 +84,26 @@ readMessage = parseOnly parseMessage
 showCommand :: IrcCommand -> Text
 showCommand =
   sanitize <$> \case
-    Ping t -> "PING :" <> t
-    Pong t -> "PONG :" <> t
-    Nick n -> "NICK " <> N.unpack n
-    User u r -> "USER " <> N.unpack u <> " - - :" <> N.unpack r
-    Join chs -> "JOIN " <> intercalate "," (N.unpack <$> chs)
+    Ping t -> "PING :" ++ t
+    Pong t -> "PONG :" ++ t
+    Nick n -> "NICK " ++ N.unpack n
+    User u r -> "USER " ++ N.unpack u ++ " - - :" ++ N.unpack r
+    Join chs -> "JOIN " ++ intercalate "," (N.unpack <$> chs)
     Part chs reason ->
-      "PART " <> intercalate "," (N.unpack <$> chs) <>
-      maybe "" (append " :") reason
-    Mode t m args -> "MODE " <> N.unpack t <> " " <> m <> " " <> T.unwords args
-    Notice t m -> "NOTICE " <> N.unpack t <> " :" <> m
-    Privmsg t m -> "PRIVMSG " <> N.unpack t <> " :" <> m
-    StringCommand name args -> name <> " " <> T.unwords (colonize args)
+      "PART " ++
+      intercalate "," (N.unpack <$> chs) ++ maybe "" (T.append " :") reason
+    Mode t m args -> "MODE " ++ N.unpack t ++ " " ++ m ++ " " ++ T.unwords args
+    Notice t m -> "NOTICE " ++ N.unpack t ++ " :" ++ m
+    Privmsg t m -> "PRIVMSG " ++ N.unpack t ++ " :" ++ m
+    StringCommand name args -> name ++ " " ++ T.unwords (colonize args)
     NumericCommand name args ->
-      T.pack (printf "%03i" name) <> " " <> T.unwords (colonize args)
+      pack (printf "%03i" name) ++ " " ++ T.unwords (colonize args)
   where
     sanitize :: Text -> Text
-    sanitize = replace "\n" "\\LF" . replace "\r" "\\CR" . replace "\0" "\\NUL"
+    sanitize =
+      T.replace "\n" "\\LF" . T.replace "\r" "\\CR" . T.replace "\0" "\\NUL"
     colonize [] = []
-    colonize xs = Prelude.init xs ++ [":" <> Prelude.last xs]
+    colonize xs = Unsafe.init xs ++ [":" ++ Unsafe.last xs]
 
 parseMessage :: Parser IrcLine
 parseMessage =
@@ -145,9 +145,10 @@ parseCommand = skipMany space *> (numericCmd <|> stringCmd)
         "USER" ->
           User . Username <$> argument <*>
           (Realname <$> (argument *> argument *> argument))
-        "JOIN" -> Join . fmap Target . splitOn "," <$> argument
+        "JOIN" -> Join . fmap Target . T.splitOn "," <$> argument
         "MODE" -> Mode . Target <$> argument <*> argument <*> many argument
-        "PART" -> Part . fmap Target . splitOn "," <$> argument <*> optionalArg
+        "PART" ->
+          Part . fmap Target . T.splitOn "," <$> argument <*> optionalArg
         "NOTICE" -> Notice . Target <$> argument <*> argument
         "PRIVMSG" -> Privmsg . Target <$> argument <*> argument
         _ -> StringCommand cmd <$> many argument
