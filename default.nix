@@ -14,6 +14,7 @@ let
       rev = "2b7965f26009b43ecd65c2dcb4d15a53941b726e";
       sha256 = "1b2mv9pvbzk0fy1zjchfmkayya9dg1kq4xk0dqm9bzphz2f4icsv";
     };
+    hie-nixpkgs = import "${hie-nix}/fetch-nixpkgs.nix";
   };
 
   ulib = { lib, ... }: {
@@ -33,7 +34,7 @@ let
 
   watchexec = (import sources.nixpkgsWatchexec {}).watchexec;
 
-  hie = (import sources.hie-nix {}).hie82;
+  hie = (import sources.hie-nix { pkgs = sources.hie-nixpkgs; }).hie82;
 
 in with (import sources.nixpkgs {}); with (ulib pkgs); let
 
