@@ -11,10 +11,10 @@ let
     };
     hie-nix = (import nixpkgs {}).fetchFromGitHub {
       owner = "domenkozar"; repo = "hie-nix";
-      rev = "2b7965f26009b43ecd65c2dcb4d15a53941b726e";
-      sha256 = "1b2mv9pvbzk0fy1zjchfmkayya9dg1kq4xk0dqm9bzphz2f4icsv";
+      rev = "b8d3fec2d73e43bae11116d0a138168676ae2365";
+      sha256 = "1g00a85krcyalyr2p189dk0rs62gsnkj5cjs0pam060nmznqb9j4";
     };
-    hie-nixpkgs = import "${hie-nix}/fetch-nixpkgs.nix";
+    hie-nix-nixpkgs = import "${hie-nix}/fetch-nixpkgs.nix";
   };
 
   ulib = { lib, ... }: {
@@ -34,7 +34,7 @@ let
 
   watchexec = (import sources.nixpkgsWatchexec {}).watchexec;
 
-  hie = (import sources.hie-nix { pkgs = sources.hie-nixpkgs; }).hie82;
+  hie = (import sources.hie-nix { pkgs = import sources.hie-nix-nixpkgs {}; }).hie82;
 
 in with (import sources.nixpkgs {}); with (ulib pkgs); let
 
@@ -47,8 +47,9 @@ in with (import sources.nixpkgs {}); with (ulib pkgs); let
       });
 
       # To make certain IFD deps survive GC.
-      haskell-prevent-ifd-gc = [] ++
-        buildPackages.haskellPackages.cabal2nix.all;
+      haskell-prevent-ifd-gc = []
+        ++ buildPackages.haskellPackages.cabal2nix.all
+        ++ buildPackages.cabal2nix.all ++ super.cabal2nix.all;
     };
   };
 
@@ -76,6 +77,6 @@ in with (import sources.nixpkgs {}); with (ulib pkgs); let
 
   prevent-ifd-gc = let
     srcs = lib.attrValues sources ++ haskellPackagesWithOverrides.haskell-prevent-ifd-gc;
-    in writeTextDir "prevent-ifd-gc" (toString srcs + "\n");
+    in writeTextDir "prevent-ifd-gc" (lib.concatMapStringsSep "\n" toString srcs + "\n");
 
 in build // { inherit env hie; }
