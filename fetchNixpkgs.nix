@@ -4,11 +4,13 @@
 # references to the NIX_PATH from your code base.
 #
 # Courtesy of
-# <https://nixos.wiki/wiki/How_to_fetch_Nixpkgs_with_an_empty_NIX_PATH>.
+# <https://nixos.wiki/wiki/How_to_fetch_Nixpkgs_with_an_empty_NIX_PATH>,
+# <https://github.com/chessai/reflex-platform/commit/a626b1a35a540516603c4d37920d443ef508839b>.
 #
 
 { rev                             # The Git revision of nixpkgs to fetch
 , sha256                          # The SHA256 of the downloaded data
+, sha256Unpacked                  # Get it by `nix-prefetch-url --unpack $url`
 , system ? builtins.currentSystem # This is overridable if necessary
 }:
 
@@ -24,7 +26,7 @@ ifThenElse {
   thenValue = (
     builtins.fetchTarball {
       url = "https://github.com/NixOS/nixpkgs/archive/${rev}.tar.gz";
-      inherit sha256;
+      sha256 = sha256Unpacked;
     });
 
   # This hack should at least work for Nix 1.11

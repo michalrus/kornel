@@ -4,10 +4,12 @@ let
     nixpkgs = import ./fetchNixpkgs.nix {
       rev = "327a84749ed48a20736fdf20b9dd4f5723b01912";
       sha256 = "0sdzl5vw3qlwhlfhjhsdzffc751hipfcmrgajsxpv3l5lykjvdsq";
+      sha256Unpacked = "0fgdcy49w073iiy9i65928219n1fy3w61xxsyqn6d8a72dxpcs3n";
     };
     nixpkgsWatchexec = import ./fetchNixpkgs.nix {
       rev = "1bccb28904ff1c1ea2fb6278fc950ebd5c8aed1d";
       sha256 = "0mvvr0wr33rhb3ay1xiakq7dgm3jxkdjfjkm79gphb52l73cfig5";
+      sha256Unpacked = "04i20pwq1cfgqs2ds358yzq9c38ip55mkx35w8nhx44xs6y27g9x";
     };
     hie-nix = (import nixpkgs {}).fetchFromGitHub {
       owner = "domenkozar"; repo = "hie-nix";
