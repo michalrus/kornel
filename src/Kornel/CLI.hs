@@ -50,7 +50,7 @@ configParser =
     text = pack <$> str
     texts = T.splitOn "," <$> text
     target = I.Target <$> text
-    targets = fmap I.Target <$> texts
+    targets = map I.Target <$> texts
 
 readConfig :: IO Config
 readConfig = execParser opts

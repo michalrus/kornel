@@ -136,10 +136,9 @@ parseCommand = skipMany space *> (numericCmd <|> stringCmd)
         "USER" ->
           User . Username <$> argument <*>
           (Realname <$> (argument *> argument *> argument))
-        "JOIN" -> Join . fmap Target . T.splitOn "," <$> argument
+        "JOIN" -> Join . map Target . T.splitOn "," <$> argument
         "MODE" -> Mode . Target <$> argument <*> argument <*> many argument
-        "PART" ->
-          Part . fmap Target . T.splitOn "," <$> argument <*> optionalArg
+        "PART" -> Part . map Target . T.splitOn "," <$> argument <*> optionalArg
         "NOTICE" -> Notice . Target <$> argument <*> argument
         "PRIVMSG" -> Privmsg . Target <$> argument <*> argument
         _ -> StringCommand cmd <$> many argument
