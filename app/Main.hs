@@ -2,7 +2,7 @@ module Main
   ( main
   ) where
 
-import qualified Kornel.Executable as K
+import qualified Kornel.Main as K
 
 main :: IO ()
 main = K.main

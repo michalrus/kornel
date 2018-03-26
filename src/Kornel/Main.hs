@@ -1,4 +1,4 @@
-module Kornel.Executable
+module Kornel.Main
   ( main
   ) where
 

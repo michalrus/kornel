@@ -41,7 +41,6 @@ library
                      , TypeOperators
   exposed-modules:     IrcParser
                      , Kornel.CLI
-                     , Kornel.Executable
                      , Kornel.LineHandler
                      , Kornel.LineHandler.Chatter
                      , Kornel.LineHandler.Slap
@@ -51,6 +50,7 @@ library
                      , Kornel.LineHandler.BotProxy
                      , Kornel.LineHandler.Scala
                      , Kornel.LineHandler.Haskell
+                     , Kornel.Main
   build-depends:       base-noprelude
                      , prelude
                      , aeson
