@@ -11,9 +11,8 @@ module IrcParser
   , showCommand
   ) where
 
-import           Control.Newtype      (Newtype)
-import qualified Control.Newtype      as N
 import           Data.Attoparsec.Text as P
+import           Data.Coerce
 import qualified Data.List            as Unsafe
 import qualified Data.Text            as T
 import           Text.Printf          (printf)
@@ -22,25 +21,17 @@ newtype Target =
   Target Text
   deriving (Show, Eq, Generic)
 
-instance Newtype Target
-
 newtype Username =
   Username Text
   deriving (Show, Eq, Generic)
-
-instance Newtype Username
 
 newtype Realname =
   Realname Text
   deriving (Show, Eq, Generic)
 
-instance Newtype Realname
-
 newtype Hostname =
   Hostname Text
   deriving (Show, Eq, Generic)
-
-instance Newtype Hostname
 
 isChannel :: Target -> Bool
 isChannel (Target s) = any @[_] (`isPrefixOf` s) ["#", "!", "&"]
@@ -86,15 +77,15 @@ showCommand =
   sanitize <$> \case
     Ping t -> "PING :" ++ t
     Pong t -> "PONG :" ++ t
-    Nick n -> "NICK " ++ N.unpack n
-    User u r -> "USER " ++ N.unpack u ++ " - - :" ++ N.unpack r
-    Join chs -> "JOIN " ++ intercalate "," (N.unpack <$> chs)
+    Nick n -> "NICK " ++ coerce n
+    User u r -> "USER " ++ coerce u ++ " - - :" ++ coerce r
+    Join chs -> "JOIN " ++ intercalate "," (coerce <$> chs)
     Part chs reason ->
       "PART " ++
-      intercalate "," (N.unpack <$> chs) ++ maybe "" (T.append " :") reason
-    Mode t m args -> "MODE " ++ N.unpack t ++ " " ++ m ++ " " ++ T.unwords args
-    Notice t m -> "NOTICE " ++ N.unpack t ++ " :" ++ m
-    Privmsg t m -> "PRIVMSG " ++ N.unpack t ++ " :" ++ m
+      intercalate "," (coerce <$> chs) ++ maybe "" (T.append " :") reason
+    Mode t m args -> "MODE " ++ coerce t ++ " " ++ m ++ " " ++ T.unwords args
+    Notice t m -> "NOTICE " ++ coerce t ++ " :" ++ m
+    Privmsg t m -> "PRIVMSG " ++ coerce t ++ " :" ++ m
     StringCommand name args -> name ++ " " ++ T.unwords (colonize args)
     NumericCommand name args ->
       pack (printf "%03i" name) ++ " " ++ T.unwords (colonize args)

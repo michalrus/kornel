@@ -2,9 +2,9 @@ module Kornel.LineHandler.Chatter
   ( handle
   ) where
 
-import           Control.Newtype         as N
 import           Data.Aeson
 import           Data.Attoparsec.Text    as P
+import           Data.Coerce
 import qualified Data.Text               as T
 import qualified Data.Text.IO            as T
 import qualified IrcParser               as I
@@ -37,10 +37,10 @@ handle = onlyPrivmsg . handle' $ HState Nothing Nothing
       Handler $ \cfg (origin, _, msg) ->
         let isToMe = toUpper myNick `isInfixOf` toUpper msg
               where
-                myNick = N.unpack $ nick cfg
+                myNick = coerce $ nick cfg
             highlight t = theirNick ++ ": " ++ t
               where
-                theirNick = N.unpack $ I.nick origin
+                theirNick = coerce $ I.nick origin
          in if isToMe
               then do
                 let question =
@@ -65,7 +65,7 @@ tryToLoadKey cfg state =
 
 stripHighlight :: I.Target -> Parser Text
 stripHighlight myNick =
-  skipSpace *> asciiCI (N.unpack myNick) *> skipSpace *>
+  skipSpace *> asciiCI (coerce myNick) *> skipSpace *>
   optional (char ':' <|> char ',') *>
   skip isHorizontalSpace *>
   takeText

@@ -4,8 +4,8 @@ module Kornel.Executable
 
 import qualified Control.Concurrent              as Unsafe
 import           Control.Monad.Loops             (whileJust_)
-import qualified Control.Newtype                 as N
 import qualified Data.ByteString                 as BS
+import           Data.Coerce
 import qualified Data.Text                       as T
 import qualified Data.Text.IO                    as T
 import qualified Data.UUID                       as UUID
@@ -152,7 +152,7 @@ login cfg ctx = do
   mapM_ (sendCommand (verbose cfg) con) $
     [ I.Nick $ nick cfg
     , I.User
-        (I.Username (N.unpack $ nick cfg))
+        (I.Username (coerce $ nick cfg))
         (I.Realname "https://github.com/michalrus/kornel")
     , I.Join $ channels cfg
     ] ++

@@ -63,8 +63,6 @@ library
                      , http-conduit
                      , monad-loops
                      , network
-                     , newtype-generics
-                     , newtype-generics
                      , optparse-applicative
                      , profunctors
                      , random
