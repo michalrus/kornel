@@ -5,9 +5,8 @@ module Kornel.LineHandler.Chatter
 import           Control.Newtype         as N
 import           Data.Aeson
 import           Data.Attoparsec.Text    as P
-import           Data.Maybe              (fromMaybe, isJust, maybe)
 import qualified Data.Text               as T
-import qualified Data.Text.IO            as TIO
+import qualified Data.Text.IO            as T
 import qualified IrcParser               as I
 import           Kornel.CLI
 import           Kornel.LineHandler
@@ -45,7 +44,7 @@ handle = onlyPrivmsg . handle' $ HState Nothing Nothing
          in if isToMe
               then do
                 let question =
-                      fromMaybe msg $ runParser (stripHighlight $ nick cfg) msg
+                      fromMaybe msg $ parseMaybe (stripHighlight $ nick cfg) msg
                 stateWithKey <- tryToLoadKey cfg state
                 (nextState, answer) <-
                   fromMaybe (state, Nothing) <$>
@@ -61,7 +60,7 @@ tryToLoadKey cfg state =
       cbApiKey <-
         join <$>
         discardException
-          (for (cleverBotApiKeyFile cfg) (map T.strip . TIO.readFile))
+          (for (cleverBotApiKeyFile cfg) (map T.strip . T.readFile))
       return $ state {apiKey = cbApiKey}
 
 stripHighlight :: I.Target -> Parser Text

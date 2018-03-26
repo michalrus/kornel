@@ -14,7 +14,7 @@ handle = onlyPrivmsg handleP
   where
     handleP =
       Handler $ \_ (_, _, msg) -> do
-        let sexpr = runParser cmdParser msg
+        let sexpr = parseMaybe cmdParser msg
         res <- join <$> discardException (join <$> eval `traverse` sexpr)
         return (res, handleP)
 

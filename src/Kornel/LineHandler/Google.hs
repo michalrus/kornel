@@ -16,7 +16,7 @@ handle = onlyPrivmsg handleP
   where
     handleP =
       Handler $ \_ (_, _, msg) -> do
-        let query = runParser cmdParser msg
+        let query = parseMaybe cmdParser msg
         response <- join <$> discardException (join <$> google `traverse` query)
         return (response, handleP)
 
@@ -29,7 +29,7 @@ google query = do
   manager <- HTTPS.newTlsManager
   let request =
         setRequestManager manager .
-        fakeChromium .
+        setupUserAgent .
         setRequestQueryString
           [ ("q", Just $ encodeUtf8 query)
           , ("hl", Just "en")

@@ -6,9 +6,8 @@ import qualified Control.Concurrent              as Unsafe
 import           Control.Monad.Loops             (whileJust_)
 import qualified Control.Newtype                 as N
 import qualified Data.ByteString                 as BS
-import           Data.Maybe                      (maybeToList)
 import qualified Data.Text                       as T
-import qualified Data.Text.IO                    as TIO
+import qualified Data.Text.IO                    as T
 import qualified Data.UUID                       as UUID
 import qualified Data.UUID.V4                    as UUID
 import qualified IrcParser                       as I
@@ -24,8 +23,6 @@ import qualified Kornel.LineHandler.Slap
 import           Network.Connection
 import           Prelude                         hiding (Handler)
 import qualified System.IO                       as IO
-
--- import           System.IO.Error
 import           System.Timeout
 
 main :: IO ()
@@ -151,7 +148,7 @@ login cfg ctx = do
     for
       (nickservPasswordFile cfg)
       (map (I.Privmsg (I.Target "NickServ") . T.append "IDENTIFY " . T.strip) .
-       TIO.readFile)
+       T.readFile)
   mapM_ (sendCommand (verbose cfg) con) $
     [ I.Nick $ nick cfg
     , I.User
@@ -159,7 +156,7 @@ login cfg ctx = do
         (I.Realname "https://github.com/michalrus/kornel")
     , I.Join $ channels cfg
     ] ++
-    maybeToList nickservCmd
+    toList nickservCmd
   return con
 
 processRawLine :: Connection -> IO (Maybe I.IrcLine)

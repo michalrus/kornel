@@ -13,7 +13,7 @@ handle = onlyPrivmsg handleP
   where
     handleP =
       Handler $ \_ (_, _, msg) -> do
-        let nicks = runParser cmdParser msg
+        let nicks = parseMaybe cmdParser msg
         let renderedReasons = reasons <$> nicks
         reason <- join <$> randomElem `traverse` renderedReasons
         return (reason, handleP)

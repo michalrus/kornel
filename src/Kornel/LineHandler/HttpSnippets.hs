@@ -31,14 +31,14 @@ snippets cfg text = do
 getSnippet :: Int -> Text -> IO (Maybe Text)
 getSnippet atMost url = do
   manager <- HTTPS.newTlsManager
-  request <- fakeChromium <$> parseRequest (unpack url)
+  request <- setupUserAgent <$> parseRequest (unpack url)
   response <-
     withResponse request manager $ \r -> brReadSome (responseBody r) atMost
   let title = findTitle $ LBS.toStrict response
   return $ T.strip . decodeHtmlEntities . decodeUtf8_ <$> title
 
 findTitle :: ByteString -> Maybe ByteString
-findTitle haystack = listToMaybe $ Prelude.drop 1 matches
+findTitle haystack = headMay $ drop 1 matches
   where
     matches :: [ByteString] =
       getAllTextSubmatches $

@@ -7,10 +7,10 @@ module Kornel.LineHandler
   , onlyPrivmsgRespondWithNotice
   , randomElem
   , meAction
-  , runParser
+  , parseMaybe
   , discardException
-  , discardError
-  , fakeChromium
+  , eitherToMaybe
+  , setupUserAgent
   , decodeHtmlEntities
   , decodeUtf8_
   ) where
@@ -82,8 +82,8 @@ randomElem xs = Just . (Unsafe.!!) xs <$> randomRIO (0, length xs - 1)
 meAction :: Text -> Text
 meAction act = "\001ACTION " <> act <> "\001"
 
-runParser :: Parser a -> Text -> Maybe a
-runParser p t = discardError $ parseOnly p t
+parseMaybe :: Parser a -> Text -> Maybe a
+parseMaybe p = eitherToMaybe . parseOnly p
 
 discardException :: IO a -> IO (Maybe a)
 discardException action =
@@ -91,14 +91,14 @@ discardException action =
     hPutStrLn stderr $ "Error: " ++ show e
     return Nothing
 
-discardError :: Either a b -> Maybe b
-discardError =
+eitherToMaybe :: Either a b -> Maybe b
+eitherToMaybe =
   \case
     Left _ -> Nothing
     Right b -> Just b
 
-fakeChromium :: Request -> Request
-fakeChromium r =
+setupUserAgent :: Request -> Request
+setupUserAgent r =
   r
     { requestHeaders =
         [ ("Accept-Language", "en-US,en;q=0.8")

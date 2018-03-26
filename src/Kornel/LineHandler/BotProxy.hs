@@ -6,7 +6,6 @@ module Kornel.LineHandler.BotProxy
 import           Control.Monad
 import           Control.Monad.Zip
 import           Data.Attoparsec.Text as P
-import           Data.Maybe           (listToMaybe)
 import qualified IrcParser            as I
 import           Kornel.CLI           as C
 import           Kornel.LineHandler
@@ -30,13 +29,13 @@ handle botNicks commandParser = handle' $ HState Nothing Nothing Nothing
               let r = (`I.Privmsg` msg) <$> lastReplyTo state
               return (r, handle' state)
             | otherwise ->
-              case runParser commandParser msg of
+              case parseMaybe commandParser msg of
                 Just command -> do
                   let replyTo =
                         if I.isChannel target
                           then target
                           else I.nick origin
-                  let bot = listToMaybe $ botNicks cfg
+                  let bot = headMay $ botNicks cfg
                   return
                     ( (`I.Privmsg` command) <$> bot
                     , handle' $
@@ -67,6 +66,5 @@ handle botNicks commandParser = handle' $ HState Nothing Nothing Nothing
 
 nextElem :: Eq a => [a] -> a -> Maybe a
 nextElem xs after
-  | after `notElem` xs = listToMaybe xs
-  | otherwise =
-    listToMaybe . mfilter (/= after) . Prelude.dropWhile (/= after) $ xs
+  | after `notElem` xs = headMay xs
+  | otherwise = headMay . mfilter (/= after) . Prelude.dropWhile (/= after) $ xs
