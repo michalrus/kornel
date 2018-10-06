@@ -1,0 +1,19 @@
+#!/bin/sh
+
+#
+# Because of
+# <https://github.com/NixOS/nix/issues/2208#issuecomment-412262911>,
+# <https://github.com/NixOS/nix/commit/19477e8815a7c9b91c82278ec0e22957c97bec16>.
+#
+
+set -o errexit
+
+CWD="$(cd -P -- "$(dirname -- "$0")" && pwd -P)"
+
+GCR="$CWD"/dist/nix
+
+nix-instantiate shell.nix --indirect --add-root "$GCR"/shell.drv
+
+nix-store --indirect --add-root "$GCR"/shell.dep --realise $(nix-store --query --references "$GCR"/shell.drv)
+
+exec nix-shell shell.nix "$@"

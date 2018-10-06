@@ -2,19 +2,13 @@ let
 
   sources = rec {
     nixpkgs = import ./fetchNixpkgs.nix {
-      rev = "327a84749ed48a20736fdf20b9dd4f5723b01912";
-      sha256 = "0sdzl5vw3qlwhlfhjhsdzffc751hipfcmrgajsxpv3l5lykjvdsq";
-      sha256Unpacked = "0fgdcy49w073iiy9i65928219n1fy3w61xxsyqn6d8a72dxpcs3n";
-    };
-    nixpkgsWatchexec = import ./fetchNixpkgs.nix {
-      rev = "1bccb28904ff1c1ea2fb6278fc950ebd5c8aed1d";
-      sha256 = "0mvvr0wr33rhb3ay1xiakq7dgm3jxkdjfjkm79gphb52l73cfig5";
-      sha256Unpacked = "04i20pwq1cfgqs2ds358yzq9c38ip55mkx35w8nhx44xs6y27g9x";
+      rev = "8395f9aa85e621c076334a67d814de8221ce7983";
+      sha256 = "04b2gyji9yz9429cy7ah3yidh4clplfgd4smkd0hx06g5n5v790g";
     };
     hie-nix = (import nixpkgs {}).fetchFromGitHub {
       owner = "domenkozar"; repo = "hie-nix";
-      rev = "b8d3fec2d73e43bae11116d0a138168676ae2365";
-      sha256 = "1g00a85krcyalyr2p189dk0rs62gsnkj5cjs0pam060nmznqb9j4";
+      rev = "e3113da93b479bec3046e67c0123860732335dd9";
+      sha256 = "05rkzjvzywsg66iafm84xgjlkf27yfbagrdcb8sc9fd59hrzyiqk";
     };
     hie-nix-nixpkgs = import "${hie-nix}/fetch-nixpkgs.nix";
   };
@@ -34,30 +28,30 @@ let
                  (lib.splitString "\n" (builtins.readFile gitignorePath)))));
   };
 
-  watchexec = (import sources.nixpkgsWatchexec {}).watchexec;
+  inherit (import sources.nixpkgs {}) pkgs;
+
+in with (ulib pkgs); let
 
   hie = (import sources.hie-nix { pkgs = import sources.hie-nix-nixpkgs {}; }).hie82;
 
-in with (import sources.nixpkgs {}); with (ulib pkgs); let
-
-  haskellPackagesWithOverrides = haskell.packages.ghc822.override {
+  haskellPackages = pkgs.haskellPackages.override {
     overrides = self: super: {
       prelude = self.callCabal2nix "prelude" ./prelude {};
 
-      html-entities = haskell.lib.overrideCabal super.html-entities (drv: {
+      html-entities = pkgs.haskell.lib.overrideCabal super.html-entities (drv: {
         setupHaskellDepends = with self; [ base Cabal cabal-doctest ]; # https://github.com/nikita-volkov/html-entities/issues/8
       });
 
       # To make certain IFD deps survive GC.
       haskell-prevent-ifd-gc = []
-        ++ buildPackages.haskellPackages.cabal2nix.all
-        ++ buildPackages.cabal2nix.all ++ super.cabal2nix.all;
+        ++ pkgs.buildPackages.haskellPackages.cabal2nix.all
+        ++ pkgs.buildPackages.cabal2nix.all ++ super.cabal2nix.all;
     };
   };
 
   build = let
     src = sourceByNegativeRegex (gitignoreToRegexes ./.gitignore ++ ["/config" "/default.nix"]) ./.;
-  in haskell.lib.overrideCabal (haskellPackagesWithOverrides.callCabal2nix "kornel" src {}) (drv: {
+  in pkgs.haskell.lib.overrideCabal (haskellPackages.callCabal2nix "kornel" src {}) (drv: {
     # For speed:
     doHaddock = false;
     # Tests require network.
@@ -67,18 +61,20 @@ in with (import sources.nixpkgs {}); with (ulib pkgs); let
     libraryHaskellDepends = drv.libraryHaskellDepends ++ [ prevent-ifd-gc ];
   });
 
-  env = lib.overrideDerivation build.env (oldAttrs: {
-    buildInputs = [ git watchexec prevent-ifd-gc ] ++
-      (with haskellPackagesWithOverrides; [ cabal-install hlint hindent stylish-haskell ]);
+  env = pkgs.lib.overrideDerivation build.env (oldAttrs: {
+    buildInputs = [ pkgs.git pkgs.watchexec prevent-ifd-gc ] ++
+      (with haskellPackages; [ cabal-install hlint hindent stylish-haskell ]);
 
     # Caution: leave oldAttrs.shellHook in place, or HIE will break (just HIE!).
     shellHook = oldAttrs.shellHook + ''
       export NIX_PATH='nixpkgs=${sources.nixpkgs}'
+      export LOCALE_ARCHIVE=${pkgs.glibcLocales}/lib/locale/locale-archive
+      export LC_ALL=
     '';
   });
 
   prevent-ifd-gc = let
-    srcs = lib.attrValues sources ++ haskellPackagesWithOverrides.haskell-prevent-ifd-gc;
-    in writeTextDir "prevent-ifd-gc" (lib.concatMapStringsSep "\n" toString srcs + "\n");
+    srcs = pkgs.lib.attrValues sources ++ haskellPackages.haskell-prevent-ifd-gc;
+    in pkgs.writeTextDir "prevent-ifd-gc" (pkgs.lib.concatMapStringsSep "\n" toString srcs + "\n");
 
 in build // { inherit env hie; }

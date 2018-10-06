@@ -23,7 +23,8 @@ import qualified Kornel.LineHandler.Slap
 import           Network.Connection
 import           Prelude                         hiding (Handler)
 import qualified System.IO                       as IO
-import           System.Timeout
+import System.IO.Error (catchIOError)
+import GHC.Conc (threadDelay)
 
 main :: IO ()
 main = do
@@ -81,7 +82,7 @@ runSession cfg ctx = do
   void . discardException . iterateWhileJust (pure allHandlers) $
     processQueue cfg con (readChan ipc) (writeChan ipc)
   connectionClose con
-  killThread thrPing
+  Unsafe.killThread thrPing
   return ()
 
 editNth :: [a] -> Int -> a -> [a]
