@@ -11,6 +11,7 @@ import           GHC.Conc                        (threadDelay)
 import qualified Irc.Commands                    as I
 import qualified Irc.Identifier                  as I
 import qualified Irc.Message                     as I
+import qualified Irc.RateLimit                   as I
 import qualified Irc.RawIrcMsg                   as I
 import           Kornel.Config
 import           Kornel.LineHandler
@@ -62,7 +63,8 @@ allHandlers =
 
 runSession :: Config -> ConnectionContext -> IO ()
 runSession cfg ctx = do
-  con <- login cfg ctx
+  rate <- I.newRateLimit 2.0 8.0
+  con <- login cfg rate ctx
   ipc <- newChan
   let pingEvery = 20 * 1000 * 1000 -- µs
   -- parse & enqueue lines from server
@@ -80,7 +82,7 @@ runSession cfg ctx = do
       writeChan ipc . QClientLine . I.ircPing $ [UUID.toText uuid]
   -- process the queue
   void . discardException . iterateWhileJust (pure allHandlers) $
-    processQueue cfg con (readChan ipc) (writeChan ipc)
+    processQueue cfg rate con (readChan ipc) (writeChan ipc)
   connectionClose con
   Unsafe.killThread thrPing
   return ()
@@ -101,18 +103,19 @@ iterateWhileJust action run = action >>= go
 
 processQueue ::
      Config
+  -> I.RateLimit
   -> Connection
   -> IO IpcQueue
   -> (IpcQueue -> IO ())
   -> [LineHandler]
   -> IO (Maybe [LineHandler])
-processQueue cfg con dequeue enqueue handlers =
+processQueue cfg rate con dequeue enqueue handlers =
   dequeue >>= \case
     QQuit -> return Nothing
     QUpdateHandler handlerId new ->
       return . Just $ editNth handlers handlerId new
     QClientLine cmd -> do
-      sendCommand cfg con cmd
+      sendCommand cfg rate con cmd
       return . Just $ handlers
     QServerLine ln -> do
       forM_ ([0 ..] `Prelude.zip` handlers) $ \(handlerId, Handler handler)
@@ -126,8 +129,8 @@ processQueue cfg con dequeue enqueue handlers =
         return ()
       return . Just $ handlers
 
-login :: Config -> ConnectionContext -> IO Connection
-login cfg ctx = do
+login :: Config -> I.RateLimit -> ConnectionContext -> IO Connection
+login cfg rate ctx = do
   con <-
     connectTo
       ctx
@@ -148,7 +151,7 @@ login cfg ctx = do
   let nickservCmd =
         I.ircPrivmsg "NickServ" . T.append "IDENTIFY " . T.strip <$>
         nickservPassword cfg
-  mapM_ (sendCommand cfg con) $
+  mapM_ (sendCommand cfg rate con) $
     [ I.ircNick . I.idText . nick $ cfg
     , I.ircUser
         (I.idText . nick $ cfg)
@@ -174,8 +177,9 @@ processRawLine con =
         return Nothing
       a -> return a
 
-sendCommand :: Config -> Connection -> I.RawIrcMsg -> IO ()
-sendCommand Config {logTraffic} con msg = do
+sendCommand :: Config -> I.RateLimit -> Connection -> I.RawIrcMsg -> IO ()
+sendCommand Config {logTraffic} rate con msg = do
+  I.tickRateLimit rate
   when logTraffic . putStrLn $ "-> " ++ tshow msg
   connectionPut con . I.renderRawIrcMsg $ msg
 
