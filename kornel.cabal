@@ -53,6 +53,7 @@ library
   build-depends:       base-noprelude
                      , prelude
                      , aeson
+                     , memory
                      , attoparsec
                      , bytestring
                      , connection

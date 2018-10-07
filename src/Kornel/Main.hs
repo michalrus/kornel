@@ -2,6 +2,8 @@ module Kornel.Main
   ( main
   ) where
 
+import qualified Data.ByteArray.Encoding         as B
+
 import qualified Control.Concurrent              as Unsafe
 import           Control.Monad.Loops             (whileJust_)
 import qualified Data.Text                       as T
@@ -148,18 +150,31 @@ login cfg rate ctx = do
                        }
         , connectionUseSocks = Nothing
         }
-  let nickservCmd =
-        I.ircPrivmsg "NickServ" . T.append "IDENTIFY " . T.strip <$>
-        nickservPassword cfg
+  let user = I.idText . nick $ cfg
+      helloCmd =
+        [ I.ircNick user
+        , I.ircUser user False False "+https://github.com/michalrus/kornel"
+        ]
+      saslPrefixCmd = maybe [] (const [I.ircCapLs]) (saslPassword cfg)
+      saslAuthCmd =
+        maybe
+          []
+          (\pass ->
+             [ I.ircCapReq ["sasl"]
+             , I.ircAuthenticate I.plainAuthenticationMode
+             , I.ircAuthenticate
+                 (decodeUtf8 . B.convertToBase B.Base64 . encodeUtf8 $
+                  user ++ "\0" ++ user ++ "\0" ++ pass)
+             , I.ircCapEnd
+             ])
+          (saslPassword cfg)
+      nickservCmd =
+        toList
+          (I.ircPrivmsg "NickServ" . T.append "IDENTIFY " . T.strip <$>
+           nickservPassword cfg)
+      joinCmd = flip I.ircJoin Nothing . I.idText <$> channels cfg
   mapM_ (sendCommand cfg rate con) $
-    [ I.ircNick . I.idText . nick $ cfg
-    , I.ircUser
-        (I.idText . nick $ cfg)
-        False
-        False
-        "+https://github.com/michalrus/kornel"
-    ] ++
-    (flip I.ircJoin Nothing . I.idText <$> channels cfg) ++ toList nickservCmd
+    saslPrefixCmd ++ helloCmd ++ saslAuthCmd ++ nickservCmd ++ joinCmd
   return con
 
 processRawLine :: Connection -> IO (Maybe I.IrcMsg)
@@ -170,7 +185,7 @@ processRawLine con =
        if isEOFError e
          then return Nothing
          else ioError e) $ do
-    rawBytes <- connectionGetLine 1024 con
+    rawBytes <- takeWhile (/= 13) <$> connectionGetLine 1024 con -- 13 is '\r'
     case map I.cookIrcMsg . I.parseRawIrcMsg . I.asUtf8 $ rawBytes of
       Nothing -> do
         IO.hPutStrLn stderr $ "Failed to parse message " ++ show rawBytes

@@ -16,6 +16,7 @@ data Config = Config
   , serverPort :: PortNumber
   , usingSSL :: Bool
   , nick :: I.Identifier
+  , saslPassword :: Maybe Text
   , nickservPassword :: Maybe Text
   , cleverBotApiKey :: Maybe Text
   , haskellBotNicks :: [I.Identifier]
@@ -39,7 +40,8 @@ readConfig = do
   Dhall.input Dhall.auto (dhallExpr cli) <&>
     (\c ->
        c
-         { nickservPassword = map T.strip . nickservPassword $ c
+         { saslPassword = map T.strip . saslPassword $ c
+         , nickservPassword = map T.strip . nickservPassword $ c
          , cleverBotApiKey = map T.strip . cleverBotApiKey $ c
          })
 

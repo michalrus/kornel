@@ -2,7 +2,8 @@
 , serverPort = 6697
 , usingSSL = True
 , nick = "kornel"
-, nickservPassword = [ ./nickserv.pass as Text ] : Optional Text
+, saslPassword = [ ./nickserv.pass as Text ] : Optional Text
+, nickservPassword = [] : Optional Text
 , httpSnippetsFetchMax = Natural/toInteger (100 * 1024)
 , cleverBotApiKey = [ ./cleverbot.key as Text ] : Optional Text
 , haskellBotNicks = [ "lambdabot" ]
