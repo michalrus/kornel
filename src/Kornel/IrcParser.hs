@@ -1,4 +1,4 @@
-module IrcParser
+module Kornel.IrcParser
   ( IrcLine(..)
   , IrcCommand(..)
   , Origin(..)

@@ -39,8 +39,8 @@ library
                      , TypeApplications
                      , TypeFamilies
                      , TypeOperators
-  exposed-modules:     IrcParser
-                     , Kornel.CLI
+  exposed-modules:     Kornel.Config
+                     , Kornel.IrcParser
                      , Kornel.LineHandler
                      , Kornel.LineHandler.Chatter
                      , Kornel.LineHandler.Slap

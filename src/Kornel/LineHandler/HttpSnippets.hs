@@ -4,7 +4,7 @@ module Kornel.LineHandler.HttpSnippets
 
 import qualified Data.ByteString.Lazy    as LBS
 import qualified Data.Text               as T
-import           Kornel.CLI
+import           Kornel.Config
 import           Kornel.LineHandler
 import           Network.HTTP.Client
 import qualified Network.HTTP.Client.TLS as HTTPS

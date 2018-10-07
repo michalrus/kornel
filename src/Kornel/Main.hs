@@ -10,8 +10,9 @@ import qualified Data.Text                       as T
 import qualified Data.Text.IO                    as T
 import qualified Data.UUID                       as UUID
 import qualified Data.UUID.V4                    as UUID
-import qualified IrcParser                       as I
-import           Kornel.CLI
+import           GHC.Conc                        (threadDelay)
+import           Kornel.Config
+import qualified Kornel.IrcParser                as I
 import           Kornel.LineHandler
 import qualified Kornel.LineHandler.Chatter
 import qualified Kornel.LineHandler.Clojure
@@ -23,8 +24,7 @@ import qualified Kornel.LineHandler.Slap
 import           Network.Connection
 import           Prelude                         hiding (Handler)
 import qualified System.IO                       as IO
-import System.IO.Error (catchIOError)
-import GHC.Conc (threadDelay)
+import           System.IO.Error                 (catchIOError)
 
 main :: IO ()
 main = do

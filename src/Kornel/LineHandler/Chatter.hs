@@ -7,8 +7,8 @@ import           Data.Attoparsec.Text    as P
 import           Data.Coerce
 import qualified Data.Text               as T
 import qualified Data.Text.IO            as T
-import qualified IrcParser               as I
-import           Kornel.CLI
+import           Kornel.Config
+import qualified Kornel.IrcParser        as I
 import           Kornel.LineHandler
 import qualified Network.HTTP.Client.TLS as HTTPS
 import           Network.HTTP.Simple

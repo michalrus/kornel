@@ -1,11 +1,11 @@
-module Kornel.CLI
+module Kornel.Config
   ( Config(..)
   , readConfig
   , LogLevel(..)
   ) where
 
 import qualified Data.Text           as T
-import qualified IrcParser           as I
+import qualified Kornel.IrcParser    as I
 import           Network.Socket      (HostName, PortNumber)
 import           Options.Applicative
 

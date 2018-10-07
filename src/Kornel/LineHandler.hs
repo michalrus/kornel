@@ -24,8 +24,8 @@ import           Data.Text.Encoding     (decodeUtf8With)
 import qualified Data.Text.Lazy         as TL
 import qualified Data.Text.Lazy.Builder as TLB
 import           HTMLEntities.Decoder   (htmlEncodedText)
-import qualified IrcParser              as I
-import qualified Kornel.CLI             as C
+import qualified Kornel.Config          as C
+import qualified Kornel.IrcParser       as I
 import           Network.HTTP.Client    (Request, requestHeaders)
 import           Prelude                hiding (Handler)
 import           System.IO

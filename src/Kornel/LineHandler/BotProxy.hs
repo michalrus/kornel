@@ -6,8 +6,8 @@ module Kornel.LineHandler.BotProxy
 import           Control.Monad
 import           Control.Monad.Zip
 import           Data.Attoparsec.Text as P
-import qualified IrcParser            as I
-import           Kornel.CLI           as C
+import           Kornel.Config        as C
+import qualified Kornel.IrcParser     as I
 import           Kornel.LineHandler
 import           Prelude              hiding (Handler, handle)
 

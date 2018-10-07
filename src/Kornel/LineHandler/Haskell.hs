@@ -3,7 +3,7 @@ module Kornel.LineHandler.Haskell
   ) where
 
 import           Data.Attoparsec.Text        as P
-import           Kornel.CLI                  as C
+import           Kornel.Config               as C
 import           Kornel.LineHandler
 import qualified Kornel.LineHandler.BotProxy as Proxy
 import           Prelude                     hiding (Handler, handle)
