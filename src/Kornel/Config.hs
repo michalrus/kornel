@@ -7,7 +7,7 @@ module Kornel.Config
 
 import qualified Data.Text           as T
 import qualified Dhall
-import qualified Kornel.IrcParser    as I
+import qualified Irc.Identifier      as I
 import           Network.Socket      (HostName, PortNumber)
 import qualified Options.Applicative as O
 
@@ -15,13 +15,13 @@ data Config = Config
   { serverHost :: HostName
   , serverPort :: PortNumber
   , usingSSL :: Bool
-  , nick :: I.Target
+  , nick :: I.Identifier
   , nickservPassword :: Maybe Text
   , cleverBotApiKey :: Maybe Text
-  , haskellBotNicks :: [I.Target]
-  , scalaBotNicks :: [I.Target]
+  , haskellBotNicks :: [I.Identifier]
+  , scalaBotNicks :: [I.Identifier]
   , httpSnippetsFetchMax :: Integer
-  , channels :: [I.Target]
+  , channels :: [I.Identifier]
   , logTraffic :: Bool
   } deriving (Eq, Generic, Show)
 
@@ -30,7 +30,8 @@ instance Dhall.Interpret Config
 instance Dhall.Interpret PortNumber where
   autoWith _ = fromIntegral <$> Dhall.natural
 
-deriving instance Dhall.Interpret I.Target
+instance Dhall.Interpret I.Identifier where
+  autoWith o = I.mkId <$> Dhall.autoWith o
 
 readConfig :: IO Config
 readConfig = do

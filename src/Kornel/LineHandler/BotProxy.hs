@@ -6,38 +6,42 @@ module Kornel.LineHandler.BotProxy
 import           Control.Monad
 import           Control.Monad.Zip
 import           Data.Attoparsec.Text as P
+import qualified Irc.Codes            as I
+import qualified Irc.Commands         as I
+import qualified Irc.Identifier       as I
+import qualified Irc.Message          as I
+import qualified Irc.UserInfo         as I
 import           Kornel.Config        as C
-import qualified Kornel.IrcParser     as I
 import           Kornel.LineHandler
 import           Prelude              hiding (Handler, handle)
 
 data HState = HState
-  { lastReplyTo :: Maybe I.Target
-  , lastBotNick :: Maybe I.Target
+  { lastReplyTo :: Maybe I.Identifier
+  , lastBotNick :: Maybe I.Identifier
   , lastBotInquiry :: Maybe Text
   } deriving (Show)
 
-handle :: (Config -> [I.Target]) -> Parser Text -> LineHandler
+handle :: (Config -> [I.Identifier]) -> Parser Text -> LineHandler
 handle botNicks commandParser = handle' $ HState Nothing Nothing Nothing
   where
     handle' :: HState -> LineHandler
     handle' state =
       Handler $ \cfg ->
         \case
-          I.IrcLine (Just origin) (I.Privmsg target msg)
-            | elem (I.nick origin) (botNicks cfg) -> do
-              let r = (`I.Privmsg` msg) <$> lastReplyTo state
+          I.Privmsg origin target msg
+            | elem (I.userNick origin) (botNicks cfg) -> do
+              let r = flip I.ircPrivmsg msg . I.idText <$> lastReplyTo state
               return (r, handle' state)
             | otherwise ->
               case parseMaybe commandParser msg of
                 Just command -> do
                   let replyTo =
-                        if I.isChannel target
+                        if isChannelIdentifier target
                           then target
-                          else I.nick origin
+                          else I.userNick origin
                   let bot = headMay $ botNicks cfg
                   return
-                    ( (`I.Privmsg` command) <$> bot
+                    ( flip I.ircPrivmsg command . I.idText <$> bot
                     , handle' $
                       state
                         { lastReplyTo = Just replyTo
@@ -45,13 +49,13 @@ handle botNicks commandParser = handle' $ HState Nothing Nothing Nothing
                         , lastBotInquiry = Just command
                         })
                 _ -> return (Nothing, handle' state)
-          I.IrcLine _ (I.NumericCommand 401 (_:target:_))
-            | (Just . I.Target) target == lastBotNick state -> do
-              let nextNick = nextElem (botNicks cfg) $ I.Target target
+          I.Reply I.ERR_NOSUCHNICK (_:target:_)
+            | (Just . I.mkId) target == lastBotNick state -> do
+              let nextNick = nextElem (botNicks cfg) $ I.mkId target
               case nextNick `mzip` lastBotInquiry state of
                 Just (to, command) ->
                   return
-                    ( Just $ I.Privmsg to command
+                    ( Just $ I.ircPrivmsg (I.idText to) command
                     , handle' state {lastBotNick = Just to})
                 Nothing ->
                   return

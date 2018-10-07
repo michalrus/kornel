@@ -4,9 +4,9 @@ module Kornel.LineHandler.Chatter
 
 import           Data.Aeson
 import           Data.Attoparsec.Text    as P
-import           Data.Coerce
+import qualified Irc.Identifier          as I
+import qualified Irc.UserInfo            as I
 import           Kornel.Config
-import qualified Kornel.IrcParser        as I
 import           Kornel.LineHandler
 import qualified Network.HTTP.Client.TLS as HTTPS
 import           Network.HTTP.Simple
@@ -35,10 +35,10 @@ handle = onlyPrivmsg . handle' $ HState Nothing Nothing
       Handler $ \cfg (origin, _, msg) ->
         let isToMe = toUpper myNick `isInfixOf` toUpper msg
               where
-                myNick = coerce $ nick cfg
+                myNick = I.idText $ nick cfg
             highlight t = theirNick ++ ": " ++ t
               where
-                theirNick = coerce $ I.nick origin
+                theirNick = I.idText $ I.userNick origin
          in if isToMe
               then do
                 let question =
@@ -56,9 +56,9 @@ tryToLoadKey cfg state =
     then return state
     else return $ state {apiKey = cleverBotApiKey cfg}
 
-stripHighlight :: I.Target -> Parser Text
+stripHighlight :: I.Identifier -> Parser Text
 stripHighlight myNick =
-  skipSpace *> asciiCI (coerce myNick) *> skipSpace *>
+  skipSpace *> asciiCI (I.idText myNick) *> skipSpace *>
   optional (char ':' <|> char ',') *>
   skip isHorizontalSpace *>
   takeText

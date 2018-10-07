@@ -4,14 +4,15 @@ module Kornel.Main
 
 import qualified Control.Concurrent              as Unsafe
 import           Control.Monad.Loops             (whileJust_)
-import qualified Data.ByteString                 as BS
-import           Data.Coerce
 import qualified Data.Text                       as T
 import qualified Data.UUID                       as UUID
 import qualified Data.UUID.V4                    as UUID
 import           GHC.Conc                        (threadDelay)
+import qualified Irc.Commands                    as I
+import qualified Irc.Identifier                  as I
+import qualified Irc.Message                     as I
+import qualified Irc.RawIrcMsg                   as I
 import           Kornel.Config
-import qualified Kornel.IrcParser                as I
 import           Kornel.LineHandler
 import qualified Kornel.LineHandler.Chatter
 import qualified Kornel.LineHandler.Clojure
@@ -41,8 +42,8 @@ runConfig cfg = do
 
 data IpcQueue
   = QQuit
-  | QClientLine I.IrcCommand
-  | QServerLine I.IrcLine
+  | QClientLine I.RawIrcMsg
+  | QServerLine I.IrcMsg
   | QUpdateHandler Int
                    LineHandler
 
@@ -76,7 +77,7 @@ runSession cfg ctx = do
     Unsafe.forkIO . forever $ do
       threadDelay pingEvery
       uuid <- UUID.nextRandom
-      writeChan ipc . QClientLine . I.Ping . pack $ UUID.toString uuid
+      writeChan ipc . QClientLine . I.ircPing $ [UUID.toText uuid]
   -- process the queue
   void . discardException . iterateWhileJust (pure allHandlers) $
     processQueue cfg con (readChan ipc) (writeChan ipc)
@@ -145,19 +146,20 @@ login cfg ctx = do
         , connectionUseSocks = Nothing
         }
   let nickservCmd =
-        I.Privmsg (I.Target "NickServ") . T.append "IDENTIFY " . T.strip <$>
+        I.ircPrivmsg "NickServ" . T.append "IDENTIFY " . T.strip <$>
         nickservPassword cfg
   mapM_ (sendCommand cfg con) $
-    [ I.Nick $ nick cfg
-    , I.User
-        (I.Username (coerce $ nick cfg))
-        (I.Realname "https://github.com/michalrus/kornel")
-    , I.Join $ channels cfg
+    [ I.ircNick . I.idText . nick $ cfg
+    , I.ircUser
+        (I.idText . nick $ cfg)
+        False
+        False
+        "+https://github.com/michalrus/kornel"
     ] ++
-    toList nickservCmd
+    (flip I.ircJoin Nothing . I.idText <$> channels cfg) ++ toList nickservCmd
   return con
 
-processRawLine :: Connection -> IO (Maybe I.IrcLine)
+processRawLine :: Connection -> IO (Maybe I.IrcMsg)
 processRawLine con =
   flip
     catchIOError
@@ -166,35 +168,28 @@ processRawLine con =
          then return Nothing
          else ioError e) $ do
     rawBytes <- connectionGetLine 1024 con
-    raw <- T.dropWhileEnd isEndOfLine . decodeUtf8_ <$> pure rawBytes
-    case I.readMessage raw of
-      Left err -> do
-        IO.hPutStrLn stderr $
-          "Failed to parse message ‘" ++
-          show raw ++ "’ with ‘" ++ show err ++ "’"
+    case map I.cookIrcMsg . I.parseRawIrcMsg . I.asUtf8 $ rawBytes of
+      Nothing -> do
+        IO.hPutStrLn stderr $ "Failed to parse message " ++ show rawBytes
         return Nothing
-      Right ok -> return $ Just ok
-  where
-    isEndOfLine c = c == '\r' || c == '\n'
+      a -> return a
 
-sendCommand :: Config -> Connection -> I.IrcCommand -> IO ()
-sendCommand Config {logTraffic} con cmd = do
-  when logTraffic . putStrLn $ "-> " ++ tshow cmd
-  connectionPut con $ BS.append bytes "\r\n"
-  where
-    bytes = BS.take 510 . encodeUtf8 $ I.showCommand cmd
+sendCommand :: Config -> Connection -> I.RawIrcMsg -> IO ()
+sendCommand Config {logTraffic} con msg = do
+  when logTraffic . putStrLn $ "-> " ++ tshow msg
+  connectionPut con . I.renderRawIrcMsg $ msg
 
 handlePing :: LineHandler
 handlePing =
   Handler $ \_ ->
     \case
-      I.IrcLine _ (I.Ping t) -> return (Just $ I.Pong t, handlePing)
+      I.Ping ts -> return (Just $ I.ircPong ts, handlePing)
       _ -> return (Nothing, handlePing)
 
 handleLogging :: LineHandler
 handleLogging =
   Handler $ \Config {logTraffic} ->
     \case
-      I.IrcLine origin msg -> do
-        when logTraffic . putStrLn $ "<- " ++ tshow origin ++ " - " ++ tshow msg
+      msg -> do
+        when logTraffic . putStrLn $ "<- " ++ tshow msg
         return (Nothing, handleLogging)

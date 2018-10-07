@@ -9,6 +9,7 @@ module Kornel.LineHandler
   , meAction
   , parseMaybe
   , discardException
+  , isChannelIdentifier
   , eitherToMaybe
   , setupUserAgent
   , decodeHtmlEntities
@@ -19,13 +20,16 @@ import qualified Control.Exception.Base as E
 import           Data.Attoparsec.Text   as P
 import           Data.ByteString        (ByteString)
 import qualified Data.List              as Unsafe
-import           Data.Profunctor
 import           Data.Text.Encoding     (decodeUtf8With)
 import qualified Data.Text.Lazy         as TL
 import qualified Data.Text.Lazy.Builder as TLB
 import           HTMLEntities.Decoder   (htmlEncodedText)
+import qualified Irc.Commands           as I
+import qualified Irc.Identifier         as I
+import qualified Irc.Message            as I
+import qualified Irc.RawIrcMsg          as I
+import qualified Irc.UserInfo           as I
 import qualified Kornel.Config          as C
-import qualified Kornel.IrcParser       as I
 import           Network.HTTP.Client    (Request, requestHeaders)
 import           Prelude                hiding (Handler)
 import           System.IO
@@ -34,46 +38,33 @@ import           System.Random          (randomRIO)
 newtype Handler a b =
   Handler (C.Config -> a -> IO (Maybe b, Handler a b))
 
-instance Profunctor Handler where
-  dimap f g (Handler fab) =
-    Handler $ \cfg c -> do
-      (mb, next) <- fab cfg (f c)
-      return (g <$> mb, dimap f g next)
-
--- FIXME: is there a class for that?
--- dimapMaybe :: (c -> a) -> (b -> Maybe d) -> Handler a b -> Handler c d
--- dimapMaybe f g (Handler fab) =
---   Handler $ \cfg c -> do
---     (mb, next) <- fab cfg (f c)
---     return (g =<< mb, dimapMaybe f g next)
 emptyHandler :: Handler a b
 emptyHandler = Handler $ \_ _ -> return (Nothing, emptyHandler)
 
-type LineHandler = Handler I.IrcLine I.IrcCommand
+type LineHandler = Handler I.IrcMsg I.RawIrcMsg
 
 -- | If you only want to react with text in response to text messages, use this.
-type PrivmsgHandler = Handler (I.Origin, I.Target, Text) Text
+type PrivmsgHandler = Handler (I.UserInfo, I.Identifier, Text) Text
 
--- FIXME: how to use Profunctor’s dimap to implement this?
 onlyPrivmsg :: PrivmsgHandler -> LineHandler
-onlyPrivmsg (Handler handler) =
-  Handler $ \cfg ->
-    \case
-      I.IrcLine (Just origin) (I.Privmsg target msg) -> do
-        (response, newHandler) <- handler cfg (origin, target, msg)
-        let replyTo =
-              if I.isChannel target
-                then target
-                else I.nick origin
-        let realResponse = I.Privmsg replyTo <$> response
-        return (realResponse, onlyPrivmsg newHandler)
-      _ -> return (Nothing, onlyPrivmsg $ Handler handler)
+onlyPrivmsg = onlyPrivmsg' I.ircPrivmsg
 
 onlyPrivmsgRespondWithNotice :: PrivmsgHandler -> LineHandler
-onlyPrivmsgRespondWithNotice privmsg = dimap id g $ onlyPrivmsg privmsg
-  where
-    g (I.Privmsg t m) = I.Notice t m
-    g a = a
+onlyPrivmsgRespondWithNotice = onlyPrivmsg' I.ircNotice
+
+onlyPrivmsg' :: (Text -> Text -> I.RawIrcMsg) -> PrivmsgHandler -> LineHandler
+onlyPrivmsg' how (Handler handler) =
+  Handler $ \cfg ->
+    \case
+      I.Privmsg source target msg -> do
+        (response, newHandler) <- handler cfg (source, target, msg)
+        let replyTo =
+              if isChannelIdentifier target
+                then target
+                else I.userNick source
+        let realResponse = how (I.idText replyTo) <$> response
+        return (realResponse, onlyPrivmsg newHandler)
+      _ -> return (Nothing, onlyPrivmsg $ Handler handler)
 
 randomElem :: [a] -> IO (Maybe a)
 randomElem [] = pure Nothing
@@ -90,6 +81,10 @@ discardException action =
   E.catch (Just <$> action) $ \(e :: E.SomeException) -> do
     hPutStrLn stderr $ "Error: " ++ show e
     return Nothing
+
+isChannelIdentifier :: I.Identifier -> Bool
+isChannelIdentifier ident =
+  any @[_] (`isPrefixOf` (I.idText ident)) ["#", "!", "&"]
 
 eitherToMaybe :: Either a b -> Maybe b
 eitherToMaybe =
