@@ -8,5 +8,5 @@
 , haskellBotNicks = [ "lambdabot" ]
 , scalaBotNicks = [ "multibot", "multibot_", "multibot1", "multibot_1", "multibot2", "multibot_2" ]
 , channels = [ "#kornel-test" ]
-, logTraffic = False
+, logTraffic = True
 }

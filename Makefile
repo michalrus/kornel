@@ -5,7 +5,7 @@ ci:    autoformat-check build lint
 
 sources=$(shell find . -name '*.hs' -a -not -path '*/.*' -a -not -path './dist/*' | sort)
 
-inShell=nix-shell --add-root dist/nix/shell.drv --indirect --pure --run
+inShell=./nix-shell-persistent --pure --run
 
 build:
 	@nix-build -j$$(nproc)

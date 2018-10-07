@@ -84,7 +84,7 @@ discardException action =
 
 isChannelIdentifier :: I.Identifier -> Bool
 isChannelIdentifier ident =
-  any @[_] (`isPrefixOf` (I.idText ident)) ["#", "!", "&"]
+  any @[_] (`isPrefixOf` I.idText ident) ["#", "!", "&"]
 
 eitherToMaybe :: Either a b -> Maybe b
 eitherToMaybe =
