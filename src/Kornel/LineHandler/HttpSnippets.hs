@@ -28,12 +28,13 @@ snippets cfg text = do
       [] -> Nothing
       xs -> Just $ T.intercalate "\n" xs
 
-getSnippet :: Int -> Text -> IO (Maybe Text)
+getSnippet :: Integer -> Text -> IO (Maybe Text)
 getSnippet atMost url = do
   manager <- HTTPS.newTlsManager
   request <- setupUserAgent <$> parseRequest (unpack url)
   response <-
-    withResponse request manager $ \r -> brReadSome (responseBody r) atMost
+    withResponse request manager $ \r ->
+      brReadSome (responseBody r) (fromIntegral atMost)
   let title = findTitle $ LBS.toStrict response
   return $ T.strip . decodeHtmlEntities . decodeUtf8_ <$> title
 

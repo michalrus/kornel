@@ -7,7 +7,6 @@ import           Control.Monad.Loops             (whileJust_)
 import qualified Data.ByteString                 as BS
 import           Data.Coerce
 import qualified Data.Text                       as T
-import qualified Data.Text.IO                    as T
 import qualified Data.UUID                       as UUID
 import qualified Data.UUID.V4                    as UUID
 import           GHC.Conc                        (threadDelay)
@@ -112,7 +111,7 @@ processQueue cfg con dequeue enqueue handlers =
     QUpdateHandler handlerId new ->
       return . Just $ editNth handlers handlerId new
     QClientLine cmd -> do
-      sendCommand (verbose cfg) con cmd
+      sendCommand cfg con cmd
       return . Just $ handlers
     QServerLine ln -> do
       forM_ ([0 ..] `Prelude.zip` handlers) $ \(handlerId, Handler handler)
@@ -145,12 +144,10 @@ login cfg ctx = do
                        }
         , connectionUseSocks = Nothing
         }
-  nickservCmd <-
-    for
-      (nickservPasswordFile cfg)
-      (map (I.Privmsg (I.Target "NickServ") . T.append "IDENTIFY " . T.strip) .
-       T.readFile)
-  mapM_ (sendCommand (verbose cfg) con) $
+  let nickservCmd =
+        I.Privmsg (I.Target "NickServ") . T.append "IDENTIFY " . T.strip <$>
+        nickservPassword cfg
+  mapM_ (sendCommand cfg con) $
     [ I.Nick $ nick cfg
     , I.User
         (I.Username (coerce $ nick cfg))
@@ -180,9 +177,9 @@ processRawLine con =
   where
     isEndOfLine c = c == '\r' || c == '\n'
 
-sendCommand :: LogLevel -> Connection -> I.IrcCommand -> IO ()
-sendCommand verbosely con cmd = do
-  when (verbosely == LogDebug) . putStrLn $ "-> " ++ tshow cmd
+sendCommand :: Config -> Connection -> I.IrcCommand -> IO ()
+sendCommand Config {logTraffic} con cmd = do
+  when logTraffic . putStrLn $ "-> " ++ tshow cmd
   connectionPut con $ BS.append bytes "\r\n"
   where
     bytes = BS.take 510 . encodeUtf8 $ I.showCommand cmd
@@ -196,9 +193,8 @@ handlePing =
 
 handleLogging :: LineHandler
 handleLogging =
-  Handler $ \cfg ->
+  Handler $ \Config {logTraffic} ->
     \case
       I.IrcLine origin msg -> do
-        when (verbose cfg == LogDebug) . putStrLn $
-          "<- " ++ tshow origin ++ " - " ++ tshow msg
+        when logTraffic . putStrLn $ "<- " ++ tshow origin ++ " - " ++ tshow msg
         return (Nothing, handleLogging)

@@ -38,7 +38,7 @@ dist/autoformat/%_fmt: %
 _devloop:
 	watchexec -rs SIGKILL "export | grep -F WATCHEXEC ; exec $(MAKE) -j1 _test _lint _run"
 _run:
-	cabal run -j -- -c ./config/dev.config
+	cabal run -j -- -c ./sample-config.dhall
 _lint:
 	@hlint $(sources)
 _test:

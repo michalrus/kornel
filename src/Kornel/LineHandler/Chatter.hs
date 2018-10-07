@@ -5,8 +5,6 @@ module Kornel.LineHandler.Chatter
 import           Data.Aeson
 import           Data.Attoparsec.Text    as P
 import           Data.Coerce
-import qualified Data.Text               as T
-import qualified Data.Text.IO            as T
 import           Kornel.Config
 import qualified Kornel.IrcParser        as I
 import           Kornel.LineHandler
@@ -56,12 +54,7 @@ tryToLoadKey :: Config -> HState -> IO HState
 tryToLoadKey cfg state =
   if isJust $ apiKey state
     then return state
-    else do
-      cbApiKey <-
-        join <$>
-        discardException
-          (for (cleverBotApiKeyFile cfg) (map T.strip . T.readFile))
-      return $ state {apiKey = cbApiKey}
+    else return $ state {apiKey = cleverBotApiKey cfg}
 
 stripHighlight :: I.Target -> Parser Text
 stripHighlight myNick =

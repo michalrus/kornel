@@ -64,6 +64,7 @@ library
                      , monad-loops
                      , network
                      , optparse-applicative
+                     , dhall
                      , profunctors
                      , random
                      , regex-base
