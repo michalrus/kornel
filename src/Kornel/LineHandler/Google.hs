@@ -14,7 +14,7 @@ import           Text.Regex.PCRE
 
 setup :: HandlerRaw
 setup =
-  onlyPrivmsg . pure $ \respond _ request ->
+  withHelp cmdHelp . onlyPrivmsg . pure $ \respond _ request ->
     case parseMaybe cmdParser request of
       Nothing -> pure ()
       Just query -> asyncWithLog "Google" $ google query >>= mapM_ respond
@@ -22,6 +22,9 @@ setup =
 cmdParser :: P.Parser Text
 cmdParser =
   P.skipSpace *> P.asciiCI "@google" *> P.skip P.isHorizontalSpace *> P.takeText
+
+cmdHelp :: Text
+cmdHelp = "@google <query>"
 
 google :: Text -> IO (Maybe Text)
 google query = do

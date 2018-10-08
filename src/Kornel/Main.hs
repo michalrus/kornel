@@ -36,7 +36,7 @@ runConfig cfg = do
   L.log "Setting up handlers…"
   eventQueue <- newChan
   mConnection <- newMVar Nothing
-  rate <- I.newRateLimit 1.0 8.0
+  rate <- I.newRateLimit 1.0 4.0
   setupHandlers <-
     forM (allHandlers cfg) ($ (writeChan eventQueue . EClientLine))
   void .
@@ -66,16 +66,17 @@ data EventQueue
   = EClientLine I.RawIrcMsg
   | EServerLine I.IrcMsg
 
+-- |The order here constitutes the order in `@help`.
 allHandlers :: Config -> [HandlerRaw]
 allHandlers cfg =
   [ handlePing
-  , Kornel.LineHandler.Chatter.setup cfg
   , Kornel.LineHandler.Slap.setup
   , Kornel.LineHandler.Google.setup
   , Kornel.LineHandler.Clojure.setup
-  , Kornel.LineHandler.HttpSnippets.setup cfg
   , Kornel.LineHandler.Scala.setup cfg
   , Kornel.LineHandler.Haskell.setup cfg
+  , Kornel.LineHandler.HttpSnippets.setup cfg
+  , Kornel.LineHandler.Chatter.setup cfg
   ]
 
 eventLoop ::
@@ -98,7 +99,9 @@ eventLoop Config {logTraffic} eventQueue handlers mConnection rate =
           Net.connectionPut connection . I.renderRawIrcMsg $ command
     EServerLine msg -> do
       when logTraffic . L.log $ "<- " ++ tshow msg
-      forM_ handlers ($ msg)
+      forM_
+        handlers
+        (handleAny (L.log . ("[ERROR] handler: " ++) . tshow) . ($ msg))
 
 data PingTimeout =
   PingTimeout

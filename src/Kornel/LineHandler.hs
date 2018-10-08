@@ -3,6 +3,7 @@ module Kornel.LineHandler
   , HandlerPrivmsg
   , onlyPrivmsg
   , onlyPrivmsgRespondWithNotice
+  , withHelp
   ) where
 
 import qualified Data.Text      as T
@@ -43,3 +44,20 @@ onlyPrivmsg' how handlerPrivmsg respondRaw = do
            source
            msg
        _ -> pure ())
+
+withHelp :: Text -> HandlerRaw -> HandlerRaw
+withHelp txt handlerOrig = merge handlerHelp handlerOrig
+  where
+    handlerHelp :: HandlerRaw
+    handlerHelp =
+      onlyPrivmsg $
+      pure
+        (\respond _ ->
+           \case
+             "@help" -> respond ("• " ++ txt)
+             _ -> pure ())
+    merge :: HandlerRaw -> HandlerRaw -> HandlerRaw
+    merge a b respond = do
+      a' <- a respond
+      b' <- b respond
+      pure (\msg -> a' msg >> b' msg)

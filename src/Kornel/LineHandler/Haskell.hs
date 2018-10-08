@@ -10,7 +10,7 @@ import           Prelude                     hiding (Handler, handle)
 
 setup :: Config -> HandlerRaw
 setup cfg =
-  Proxy.setup (C.haskellBotNicks cfg) $ do
+  withHelp cmdHelp . Proxy.setup (C.haskellBotNicks cfg) $ do
     skipSpace
     (asciiCI "@haskell" <|> asciiCI "@hs") *> spc
     command <-
@@ -31,3 +31,7 @@ setup cfg =
     return (command ++ " " ++ expr)
   where
     spc = void . many1 $ skip isHorizontalSpace
+
+cmdHelp :: Text
+cmdHelp =
+  "{ @haskell | @hs } [ :type | :t | :kind | :k | :pl | :pointful | :free | :instances | :hoogle | :index | :djinn | :undo | :unmtl | :source | :src | :s ] <expr>"

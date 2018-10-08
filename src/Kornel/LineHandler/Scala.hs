@@ -10,7 +10,7 @@ import           Prelude                     hiding (Handler, handle)
 
 setup :: Config -> HandlerRaw
 setup cfg =
-  Proxy.setup (C.scalaBotNicks cfg) $ do
+  withHelp cmdHelp . Proxy.setup (C.scalaBotNicks cfg) $ do
     skipSpace
     asciiCI "@scala" *> spc
     command <-
@@ -19,3 +19,6 @@ setup cfg =
     return (command <> " " <> expr)
   where
     spc = void . many1 $ skip isHorizontalSpace
+
+cmdHelp :: Text
+cmdHelp = "@scala [ :type | :t ] <expr>"

@@ -11,7 +11,7 @@ import           Prelude              hiding (Handler, handle)
 
 setup :: HandlerRaw
 setup =
-  onlyPrivmsg . pure $ \respond _ request -> do
+  withHelp cmdHelp . onlyPrivmsg . pure $ \respond _ request -> do
     let nicks = parseMaybe cmdParser request
     let renderedReasons = reasons <$> nicks
     reason <- join <$> randomElem `traverse` renderedReasons
@@ -21,6 +21,9 @@ cmdParser :: Parser [Text]
 cmdParser = skipSpace *> asciiCI "@slap" *> many1 nick
   where
     nick = skipSpace *> takeWhile1 (not . isHorizontalSpace)
+
+cmdHelp :: Text
+cmdHelp = "@slap <nick1>[ <nick2>[ …]]"
 
 -- | Reasons taken from the wonderful lambdabot. ♥
 {-# ANN reasons ("HLint: ignore Redundant $" :: String) #-}

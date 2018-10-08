@@ -12,7 +12,7 @@ import           Prelude                 hiding (Handler, handle)
 
 setup :: HandlerRaw
 setup =
-  onlyPrivmsg . pure $ \respond _ request ->
+  withHelp cmdHelp . onlyPrivmsg . pure $ \respond _ request ->
     case parseMaybe cmdParser request of
       Nothing -> pure ()
       Just sexpr -> asyncWithLog "Clojure" $ eval sexpr >>= mapM_ respond
@@ -22,6 +22,9 @@ cmdParser =
   P.skipSpace *> (P.asciiCI "@clojure" <|> P.asciiCI "@clj") *>
   P.skip P.isHorizontalSpace *>
   P.takeText
+
+cmdHelp :: Text
+cmdHelp = "{ @clojure | @clj } <sexpr>"
 
 data TryCljResponse = TryCljResponse
   { result :: Maybe Text
