@@ -1,5 +1,5 @@
 module Kornel.LineHandler.Haskell
-  ( handle
+  ( setup
   ) where
 
 import           Data.Attoparsec.Text        as P
@@ -8,9 +8,9 @@ import           Kornel.LineHandler
 import qualified Kornel.LineHandler.BotProxy as Proxy
 import           Prelude                     hiding (Handler, handle)
 
-handle :: LineHandler
-handle =
-  Proxy.handle C.haskellBotNicks $ do
+setup :: Config -> HandlerRaw
+setup cfg =
+  Proxy.setup (C.haskellBotNicks cfg) $ do
     skipSpace
     (asciiCI "@haskell" <|> asciiCI "@hs") *> spc
     command <-

@@ -3,9 +3,6 @@ module Kornel.Main
   ) where
 
 import qualified Data.ByteArray.Encoding         as B
-
-import qualified Control.Concurrent              as Unsafe
-import           Control.Monad.Loops             (whileJust_)
 import qualified Data.Text                       as T
 import qualified Data.UUID                       as UUID
 import qualified Data.UUID.V4                    as UUID
@@ -24,10 +21,10 @@ import qualified Kornel.LineHandler.Haskell
 import qualified Kornel.LineHandler.HttpSnippets
 import qualified Kornel.LineHandler.Scala
 import qualified Kornel.LineHandler.Slap
-import           Network.Connection
+import qualified Kornel.Log                      as L
+import qualified Network.Connection              as Net
 import           Prelude                         hiding (Handler)
 import qualified System.IO                       as IO
-import           System.IO.Error                 (catchIOError)
 
 main :: IO ()
 main = do
@@ -36,114 +33,114 @@ main = do
 
 runConfig :: Config -> IO ()
 runConfig cfg = do
-  ctx <- initConnectionContext
+  L.log "Setting up handlers…"
+  eventQueue <- newChan
+  mConnection <- newMVar Nothing
+  rate <- I.newRateLimit 1.0 8.0
+  setupHandlers <-
+    forM (allHandlers cfg) ($ (writeChan eventQueue . EClientLine))
+  void .
+    async .
+    forever .
+    handleAny
+      ((>> (threadDelay $ 1 * 1000 * 1000)) .
+       L.log . ("-ERROR- eventLoop: " ++) . tshow) $
+    eventLoop cfg eventQueue setupHandlers mConnection rate
+  -------
+  ctx <- Net.initConnectionContext
   forever $ do
-    IO.hPutStrLn stderr "Starting new session…"
-    void $ discardException (runSession cfg ctx)
-    IO.hPutStrLn stderr "Session ended."
+    L.log "Starting new connection…"
+    finally
+      (handleAny
+         (L.log . ("-ERROR- runConnection: " ++) . tshow)
+         (runConnection
+            cfg
+            ctx
+            mConnection
+            (writeChan eventQueue . EServerLine)
+            (writeChan eventQueue . EClientLine)))
+      (L.log "Connection ended.")
     threadDelay $ 10 * 1000 * 1000 -- µs
 
-data IpcQueue
-  = QQuit
-  | QClientLine I.RawIrcMsg
-  | QServerLine I.IrcMsg
-  | QUpdateHandler Int
-                   LineHandler
+data EventQueue
+  = EClientLine I.RawIrcMsg
+  | EServerLine I.IrcMsg
 
-allHandlers :: [LineHandler]
-allHandlers =
-  [ handleLogging
-  , handlePing
-  , Kornel.LineHandler.Chatter.handle
-  , Kornel.LineHandler.Slap.handle
-  , Kornel.LineHandler.Google.handle
-  , Kornel.LineHandler.Clojure.handle
-  , Kornel.LineHandler.HttpSnippets.handle
-  , Kornel.LineHandler.Scala.handle
-  , Kornel.LineHandler.Haskell.handle
+allHandlers :: Config -> [HandlerRaw]
+allHandlers cfg =
+  [ handlePing
+  , Kornel.LineHandler.Chatter.setup cfg
+  , Kornel.LineHandler.Slap.setup
+  , Kornel.LineHandler.Google.setup
+  , Kornel.LineHandler.Clojure.setup
+  , Kornel.LineHandler.HttpSnippets.setup cfg
+  , Kornel.LineHandler.Scala.setup cfg
+  , Kornel.LineHandler.Haskell.setup cfg
   ]
 
-runSession :: Config -> ConnectionContext -> IO ()
-runSession cfg ctx = do
-  rate <- I.newRateLimit 2.0 8.0
-  con <- login cfg rate ctx
-  ipc <- newChan
-  let pingEvery = 20 * 1000 * 1000 -- µs
-  -- parse & enqueue lines from server
-  _ <-
-    Unsafe.forkIO $ do
-      let timedProcessLine =
-            join <$> timeout (2 * pingEvery) (processRawLine con)
-      whileJust_ timedProcessLine $ writeChan ipc . QServerLine
-      writeChan ipc QQuit
-  -- send our PINGs
-  thrPing <-
-    Unsafe.forkIO . forever $ do
-      threadDelay pingEvery
-      uuid <- UUID.nextRandom
-      writeChan ipc . QClientLine . I.ircPing $ [UUID.toText uuid]
-  -- process the queue
-  void . discardException . iterateWhileJust (pure allHandlers) $
-    processQueue cfg rate con (readChan ipc) (writeChan ipc)
-  connectionClose con
-  Unsafe.killThread thrPing
-  return ()
-
-editNth :: [a] -> Int -> a -> [a]
-editNth xs n x =
-  if 0 <= n && n < Prelude.length xs
-    then Prelude.take n xs ++ [x] ++ Prelude.drop (n + 1) xs
-    else xs
-
-iterateWhileJust :: Monad m => m a -> (a -> m (Maybe a)) -> m ()
-iterateWhileJust action run = action >>= go
-  where
-    go an =
-      run an >>= \case
-        Just an1 -> go an1
-        Nothing -> return ()
-
-processQueue ::
+eventLoop ::
      Config
+  -> Chan EventQueue
+  -> [I.IrcMsg -> IO ()]
+  -> MVar (Maybe Net.Connection)
   -> I.RateLimit
-  -> Connection
-  -> IO IpcQueue
-  -> (IpcQueue -> IO ())
-  -> [LineHandler]
-  -> IO (Maybe [LineHandler])
-processQueue cfg rate con dequeue enqueue handlers =
-  dequeue >>= \case
-    QQuit -> return Nothing
-    QUpdateHandler handlerId new ->
-      return . Just $ editNth handlers handlerId new
-    QClientLine cmd -> do
-      sendCommand cfg rate con cmd
-      return . Just $ handlers
-    QServerLine ln -> do
-      forM_ ([0 ..] `Prelude.zip` handlers) $ \(handlerId, Handler handler)
-        -- running each handler for each message on its own thread
-       -> do
-        _ <-
-          Unsafe.forkIO $ do
-            (resp, newHandler) <- handler cfg ln
-            enqueue $ QUpdateHandler handlerId newHandler
-            mapM_ (enqueue . QClientLine) resp
-        return ()
-      return . Just $ handlers
+  -> IO ()
+eventLoop Config {logTraffic} eventQueue handlers mConnection rate =
+  readChan eventQueue >>= \case
+    EClientLine command ->
+      readMVar mConnection >>= \case
+        Nothing ->
+          L.log $
+          "-WARNING- No connection, command not delivered: " ++ tshow command
+        Just connection -> do
+          I.tickRateLimit rate
+          when logTraffic . L.log $ "-> " ++ tshow command
+          Net.connectionPut connection . I.renderRawIrcMsg $ command
+    EServerLine msg -> do
+      when logTraffic . L.log $ "<- " ++ tshow msg
+      forM_ handlers ($ msg)
 
-login :: Config -> I.RateLimit -> ConnectionContext -> IO Connection
-login cfg rate ctx = do
+runConnection ::
+     Config
+  -> Net.ConnectionContext
+  -> MVar (Maybe Net.Connection)
+  -> (I.IrcMsg -> IO ())
+  -> (I.RawIrcMsg -> IO ())
+  -> IO ()
+runConnection cfg ctx mConnection announceMsg sendCommand = do
+  (connection, loginCommands) <- login cfg ctx
+  finally
+    (do void $ swapMVar mConnection (Just connection)
+        mapM_ sendCommand loginCommands
+        let pingEvery = 20 * 1000 * 1000 -- µs
+        void $
+          race
+            (forever $ do
+               threadDelay pingEvery
+               uuid <- UUID.nextRandom
+               sendCommand $ I.ircPing [UUID.toText uuid])
+            (forever $ do
+               rawBytes <-
+                 takeWhile (/= 13) <$> Net.connectionGetLine 1024 connection -- 13 is '\r'
+               case map I.cookIrcMsg . I.parseRawIrcMsg . I.asUtf8 $ rawBytes of
+                 Just a -> announceMsg a
+                 Nothing -> L.log $ "Failed to parse message " ++ tshow rawBytes))
+    (do void $ swapMVar mConnection Nothing
+        Net.connectionClose connection)
+
+login :: Config -> Net.ConnectionContext -> IO (Net.Connection, [I.RawIrcMsg])
+login cfg ctx = do
   con <-
-    connectTo
+    Net.connectTo
       ctx
-      ConnectionParams
+      Net.ConnectionParams
         { connectionHostname = serverHost cfg
         , connectionPort = serverPort cfg
         , connectionUseSecure =
             if not $ usingSSL cfg
               then Nothing
               else Just
-                     TLSSettingsSimple
+                     Net.TLSSettingsSimple
                        { settingDisableCertificateValidation = False
                        , settingDisableSession = True
                        , settingUseServerName = True
@@ -173,42 +170,11 @@ login cfg rate ctx = do
           (I.ircPrivmsg "NickServ" . T.append "IDENTIFY " . T.strip <$>
            nickservPassword cfg)
       joinCmd = flip I.ircJoin Nothing . I.idText <$> channels cfg
-  mapM_ (sendCommand cfg rate con) $
-    saslPrefixCmd ++ helloCmd ++ saslAuthCmd ++ nickservCmd ++ joinCmd
-  return con
+  return
+    (con, saslPrefixCmd ++ helloCmd ++ saslAuthCmd ++ nickservCmd ++ joinCmd)
 
-processRawLine :: Connection -> IO (Maybe I.IrcMsg)
-processRawLine con =
-  flip
-    catchIOError
-    (\e ->
-       if isEOFError e
-         then return Nothing
-         else ioError e) $ do
-    rawBytes <- takeWhile (/= 13) <$> connectionGetLine 1024 con -- 13 is '\r'
-    case map I.cookIrcMsg . I.parseRawIrcMsg . I.asUtf8 $ rawBytes of
-      Nothing -> do
-        IO.hPutStrLn stderr $ "Failed to parse message " ++ show rawBytes
-        return Nothing
-      a -> return a
-
-sendCommand :: Config -> I.RateLimit -> Connection -> I.RawIrcMsg -> IO ()
-sendCommand Config {logTraffic} rate con msg = do
-  I.tickRateLimit rate
-  when logTraffic . putStrLn $ "-> " ++ tshow msg
-  connectionPut con . I.renderRawIrcMsg $ msg
-
-handlePing :: LineHandler
-handlePing =
-  Handler $ \_ ->
-    \case
-      I.Ping ts -> return (Just $ I.ircPong ts, handlePing)
-      _ -> return (Nothing, handlePing)
-
-handleLogging :: LineHandler
-handleLogging =
-  Handler $ \Config {logTraffic} ->
-    \case
-      msg -> do
-        when logTraffic . putStrLn $ "<- " ++ tshow msg
-        return (Nothing, handleLogging)
+handlePing :: HandlerRaw
+handlePing sendMsg =
+  pure $ \case
+    I.Ping ts -> sendMsg $ I.ircPong ts
+    _ -> pure ()

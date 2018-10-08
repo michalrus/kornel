@@ -1,5 +1,5 @@
 module Kornel.LineHandler.Scala
-  ( handle
+  ( setup
   ) where
 
 import           Data.Attoparsec.Text        as P
@@ -8,9 +8,9 @@ import           Kornel.LineHandler
 import qualified Kornel.LineHandler.BotProxy as Proxy
 import           Prelude                     hiding (Handler, handle)
 
-handle :: LineHandler
-handle =
-  Proxy.handle C.scalaBotNicks $ do
+setup :: Config -> HandlerRaw
+setup cfg =
+  Proxy.setup (C.scalaBotNicks cfg) $ do
     skipSpace
     asciiCI "@scala" *> spc
     command <-

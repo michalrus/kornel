@@ -1,22 +1,21 @@
 module Kornel.LineHandler.Slap
-  ( handle
+  ( setup
   ) where
 
 import           Data.Attoparsec.Text as P
 import qualified Data.List            as Unsafe
 import           Data.Text            as T
+import           Kornel.Common
 import           Kornel.LineHandler
 import           Prelude              hiding (Handler, handle)
 
-handle :: LineHandler
-handle = onlyPrivmsg handleP
-  where
-    handleP =
-      Handler $ \_ (_, _, msg) -> do
-        let nicks = parseMaybe cmdParser msg
-        let renderedReasons = reasons <$> nicks
-        reason <- join <$> randomElem `traverse` renderedReasons
-        return (reason, handleP)
+setup :: HandlerRaw
+setup =
+  onlyPrivmsg . pure $ \respond _ request -> do
+    let nicks = parseMaybe cmdParser request
+    let renderedReasons = reasons <$> nicks
+    reason <- join <$> randomElem `traverse` renderedReasons
+    mapM_ respond reason
 
 cmdParser :: Parser [Text]
 cmdParser = skipSpace *> asciiCI "@slap" *> many1 nick
@@ -74,7 +73,7 @@ reasons nicks =
     px = listPeople $ possessive <$> nicks
     me = meAction
 
---8<----------------- TODO: move to LineHandler? ----------------->8--
+--8<----------------- TODO: move to Common? ----------------->8--
 possessive :: Text -> Text
 possessive x
   | T.null x = ""

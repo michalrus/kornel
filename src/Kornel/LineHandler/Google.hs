@@ -1,24 +1,23 @@
 module Kornel.LineHandler.Google
-  ( handle
+  ( setup
   , google
   ) where
 
 import qualified Data.Attoparsec.Text    as P
 import qualified Data.Text               as T
+import           Kornel.Common
 import           Kornel.LineHandler
 import qualified Network.HTTP.Client.TLS as HTTPS
 import           Network.HTTP.Simple
 import           Prelude                 hiding (Handler, handle)
 import           Text.Regex.PCRE
 
-handle :: LineHandler
-handle = onlyPrivmsg handleP
-  where
-    handleP =
-      Handler $ \_ (_, _, msg) -> do
-        let query = parseMaybe cmdParser msg
-        response <- join <$> discardException (join <$> google `traverse` query)
-        return (response, handleP)
+setup :: HandlerRaw
+setup =
+  onlyPrivmsg . pure $ \respond _ request ->
+    case parseMaybe cmdParser request of
+      Nothing -> pure ()
+      Just query -> asyncWithLog "Google" $ google query >>= mapM_ respond
 
 cmdParser :: P.Parser Text
 cmdParser =

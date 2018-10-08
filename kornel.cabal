@@ -39,16 +39,18 @@ library
                      , TypeApplications
                      , TypeFamilies
                      , TypeOperators
-  exposed-modules:     Kornel.Config
+  exposed-modules:     Kornel.Common
+                     , Kornel.Config
                      , Kornel.LineHandler
-                     , Kornel.LineHandler.Chatter
-                     , Kornel.LineHandler.Slap
-                     , Kornel.LineHandler.Google
-                     , Kornel.LineHandler.Clojure
-                     , Kornel.LineHandler.HttpSnippets
                      , Kornel.LineHandler.BotProxy
-                     , Kornel.LineHandler.Scala
+                     , Kornel.LineHandler.Chatter
+                     , Kornel.LineHandler.Clojure
+                     , Kornel.LineHandler.Google
                      , Kornel.LineHandler.Haskell
+                     , Kornel.LineHandler.HttpSnippets
+                     , Kornel.LineHandler.Scala
+                     , Kornel.LineHandler.Slap
+                     , Kornel.Log
                      , Kornel.Main
   build-depends:       base-noprelude
                      , prelude
@@ -57,12 +59,14 @@ library
                      , attoparsec
                      , bytestring
                      , connection
+                     , fast-logger
                      , irc-core
                      , html-entities
                      , http-client
                      , http-client-tls
                      , http-conduit
                      , monad-loops
+                     , transformers
                      , network
                      , optparse-applicative
                      , dhall

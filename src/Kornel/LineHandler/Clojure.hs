@@ -1,22 +1,21 @@
 module Kornel.LineHandler.Clojure
-  ( handle
+  ( setup
   ) where
 
 import           Data.Aeson
 import qualified Data.Attoparsec.Text    as P
+import           Kornel.Common
 import           Kornel.LineHandler
 import qualified Network.HTTP.Client.TLS as HTTPS
 import           Network.HTTP.Simple
 import           Prelude                 hiding (Handler, handle)
 
-handle :: LineHandler
-handle = onlyPrivmsg handleP
-  where
-    handleP =
-      Handler $ \_ (_, _, msg) -> do
-        let sexpr = parseMaybe cmdParser msg
-        res <- join <$> discardException (join <$> eval `traverse` sexpr)
-        return (res, handleP)
+setup :: HandlerRaw
+setup =
+  onlyPrivmsg . pure $ \respond _ request ->
+    case parseMaybe cmdParser request of
+      Nothing -> pure ()
+      Just sexpr -> asyncWithLog "Clojure" $ eval sexpr >>= mapM_ respond
 
 cmdParser :: P.Parser Text
 cmdParser =

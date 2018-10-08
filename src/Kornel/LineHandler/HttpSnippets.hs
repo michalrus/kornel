@@ -1,9 +1,10 @@
 module Kornel.LineHandler.HttpSnippets
-  ( handle
+  ( setup
   ) where
 
 import qualified Data.ByteString.Lazy    as LBS
 import qualified Data.Text               as T
+import           Kornel.Common
 import           Kornel.Config
 import           Kornel.LineHandler
 import           Network.HTTP.Client
@@ -11,17 +12,15 @@ import qualified Network.HTTP.Client.TLS as HTTPS
 import           Prelude                 hiding (Handler, handle)
 import           Text.Regex.PCRE
 
-handle :: LineHandler
-handle = onlyPrivmsgRespondWithNotice handleP
-  where
-    handleP =
-      Handler $ \cfg (_, _, msg) -> do
-        res <- join <$> discardException (snippets cfg msg)
-        return (res, handleP)
+setup :: Config -> HandlerRaw
+setup cfg =
+  onlyPrivmsgRespondWithNotice . pure $ \respond _ request ->
+    case findURLs request of
+      [] -> pure ()
+      urls -> asyncWithLog "HttpSnippets" $ snippets cfg urls >>= mapM_ respond
 
-snippets :: Config -> Text -> IO (Maybe Text)
-snippets cfg text = do
-  let urls = findURLs text
+snippets :: Config -> [Text] -> IO (Maybe Text)
+snippets cfg urls = do
   snips <- catMaybes <$> getSnippet (httpSnippetsFetchMax cfg) `traverse` urls
   return $
     case snips of
