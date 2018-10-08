@@ -15,7 +15,7 @@ import           System.Random          (randomRIO)
 
 asyncWithLog :: Text -> IO () -> IO ()
 asyncWithLog name =
-  void . async . handleAny (L.log . (("-ERROR- " ++ name ++ ": ") ++) . tshow)
+  void . async . handleAny (L.log . (("[ERROR] " ++ name ++ ": ") ++) . tshow)
 
 randomElem :: [a] -> IO (Maybe a)
 randomElem [] = pure Nothing

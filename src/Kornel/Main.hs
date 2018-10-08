@@ -44,7 +44,7 @@ runConfig cfg = do
     forever .
     handleAny
       ((>> (threadDelay $ 1 * 1000 * 1000)) .
-       L.log . ("-ERROR- eventLoop: " ++) . tshow) $
+       L.log . ("[ERROR] eventLoop: " ++) . tshow) $
     eventLoop cfg eventQueue setupHandlers mConnection rate
   -------
   ctx <- Net.initConnectionContext
@@ -52,7 +52,7 @@ runConfig cfg = do
     L.log "Starting new connection…"
     finally
       (handleAny
-         (L.log . ("-ERROR- runConnection: " ++) . tshow)
+         (L.log . ("[ERROR] runConnection: " ++) . tshow)
          (runConnection
             cfg
             ctx
@@ -91,7 +91,7 @@ eventLoop Config {logTraffic} eventQueue handlers mConnection rate =
       readMVar mConnection >>= \case
         Nothing ->
           L.log $
-          "-WARNING- No connection, command not delivered: " ++ tshow command
+          "[WARNING] No connection, command not delivered: " ++ tshow command
         Just connection -> do
           I.tickRateLimit rate
           when logTraffic . L.log $ "-> " ++ tshow command
@@ -99,6 +99,12 @@ eventLoop Config {logTraffic} eventQueue handlers mConnection rate =
     EServerLine msg -> do
       when logTraffic . L.log $ "<- " ++ tshow msg
       forM_ handlers ($ msg)
+
+data PingTimeout =
+  PingTimeout
+  deriving (Eq, Show)
+
+instance Exception PingTimeout
 
 runConnection ::
      Config
@@ -119,12 +125,18 @@ runConnection cfg ctx mConnection announceMsg sendCommand = do
                threadDelay pingEvery
                uuid <- UUID.nextRandom
                sendCommand $ I.ircPing [UUID.toText uuid])
-            (forever $ do
-               rawBytes <-
-                 takeWhile (/= 13) <$> Net.connectionGetLine 1024 connection -- 13 is '\r'
-               case map I.cookIrcMsg . I.parseRawIrcMsg . I.asUtf8 $ rawBytes of
-                 Just a -> announceMsg a
-                 Nothing -> L.log $ "Failed to parse message " ++ tshow rawBytes))
+            (forever $
+             timeout
+               (2 * pingEvery)
+               (takeWhile (/= 13) <$> Net.connectionGetLine 1024 connection) -- 13 is '\r'
+              >>= \case
+               Nothing -> throwIO PingTimeout
+               Just rawBytes ->
+                 case map I.cookIrcMsg . I.parseRawIrcMsg . I.asUtf8 $ rawBytes of
+                   Just a -> announceMsg a
+                   Nothing ->
+                     L.log $
+                     "[ERROR] Failed to parse message " ++ tshow rawBytes ++ "."))
     (do void $ swapMVar mConnection Nothing
         Net.connectionClose connection)
 
