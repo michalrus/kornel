@@ -12,10 +12,11 @@ import           Prelude                 hiding (Handler, handle)
 
 setup :: HandlerRaw
 setup =
-  withHelp cmdHelp . onlyPrivmsg . pure $ \respond _ request ->
+  withHelp cmdHelp . onlySimple . pure $ \respond _ request ->
     case parseMaybe cmdParser request of
       Nothing -> pure ()
-      Just sexpr -> asyncWithLog "Clojure" $ eval sexpr >>= mapM_ respond
+      Just sexpr ->
+        asyncWithLog "Clojure" $ eval sexpr >>= mapM_ (respond . Privmsg)
 
 cmdParser :: P.Parser Text
 cmdParser =

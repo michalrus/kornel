@@ -3,21 +3,30 @@ module Kornel.LineHandler.Google
   , google
   ) where
 
-import qualified Data.Attoparsec.Text    as P
-import qualified Data.Text               as T
+import qualified Data.Attoparsec.Text            as P
 import           Kornel.Common
+import           Kornel.Config
 import           Kornel.LineHandler
-import qualified Network.HTTP.Client.TLS as HTTPS
+import           Kornel.LineHandler.HttpSnippets (snippets)
+import qualified Network.HTTP.Client.TLS         as HTTPS
 import           Network.HTTP.Simple
-import           Prelude                 hiding (Handler, handle)
+import qualified Network.URI.Encode              as URI
+import           Prelude                         hiding (Handler, handle)
 import           Text.Regex.PCRE
 
-setup :: HandlerRaw
-setup =
-  withHelp cmdHelp . onlyPrivmsg . pure $ \respond _ request ->
+setup :: Config -> HandlerRaw
+setup cfg =
+  withHelp cmdHelp . onlySimple . pure $ \respond _ request ->
     case parseMaybe cmdParser request of
       Nothing -> pure ()
-      Just query -> asyncWithLog "Google" $ google query >>= mapM_ respond
+      Just query ->
+        asyncWithLog "Google" $
+        google query >>=
+        mapM_
+          (\url -> do
+             respond (Privmsg url)
+             asyncWithLog "Google.snippet" $
+               snippets cfg [url] >>= mapM_ (respond . Notice))
 
 cmdParser :: P.Parser Text
 cmdParser =
@@ -26,7 +35,7 @@ cmdParser =
 cmdHelp :: Text
 cmdHelp = "@google <query>"
 
-google :: Text -> IO (Maybe Text)
+google :: Text -> IO [Text]
 google query = do
   manager <- HTTPS.newTlsManager
   let request =
@@ -39,26 +48,19 @@ google query = do
           ] $
         "https://www.google.com/search"
   response <- toStrict . getResponseBody <$> httpLBS request
-  let result = firstResult response
-  return $ (\(GResult u t) -> "“" ++ t ++ "” — " ++ u) <$> result
+  pure . take 1 . findUrls $ response
 
-data GResult = GResult
-  { url :: Text
-  , title :: Text
-  } deriving (Show)
-
-firstResult :: ByteString -> Maybe GResult
-firstResult input =
-  case parts of
-    [_, u, t] ->
-      Just
-        GResult
-          { url = T.strip $ decodeUtf8_ u
-          , title = T.strip . decodeHtmlEntities . decodeUtf8_ $ t
-          }
-    _ -> Nothing
+findUrls :: ByteString -> [Text]
+findUrls input =
+  filter
+    (not . ("http://webcache.googleusercontent.com/search" `isPrefixOf`))
+    urls
   where
-    first' :: ByteString = input =~ ("(?i)<h3.*?</h3>" :: ByteString)
-    parts :: [ByteString] =
-      getAllTextSubmatches $
-      first' =~ ("(?i)<a .*?href=\"(.*?)\".*?>(.*?)<" :: ByteString)
+    urls :: [Text] =
+      mapMaybe
+        (\case
+           [_, a] -> Just (URI.decodeBSToText a)
+           _ -> Nothing)
+        urlMatches
+    urlMatches :: [[ByteString]] =
+      input =~ ("(?i)href=\"/url\\?q=([^&]+)" :: ByteString)

@@ -1,8 +1,8 @@
 module Kornel.LineHandler
   ( HandlerRaw
-  , HandlerPrivmsg
-  , onlyPrivmsg
-  , onlyPrivmsgRespondWithNotice
+  , HandlerSimple
+  , onlySimple
+  , SimpleReply(..)
   , withHelp
   ) where
 
@@ -18,17 +18,16 @@ type HandlerRaw = (I.RawIrcMsg -> IO ()) -> IO (I.IrcMsg -> IO ())
 
 -- |A slightly different structure is needed, because we need to carry
 -- a context of where to send the reply back to.
-type HandlerPrivmsg = IO ((Text -> IO ()) -> I.UserInfo -> Text -> IO ())
+type HandlerSimple = IO ((SimpleReply -> IO ()) -> I.UserInfo -> Text -> IO ())
 
-onlyPrivmsg :: HandlerPrivmsg -> HandlerRaw
-onlyPrivmsg = onlyPrivmsg' I.ircPrivmsg
+data SimpleReply
+  = Privmsg Text
+  | Notice Text
+  deriving (Eq, Show)
 
-onlyPrivmsgRespondWithNotice :: HandlerPrivmsg -> HandlerRaw
-onlyPrivmsgRespondWithNotice = onlyPrivmsg' I.ircNotice
-
-onlyPrivmsg' :: (Text -> Text -> I.RawIrcMsg) -> HandlerPrivmsg -> HandlerRaw
-onlyPrivmsg' how handlerPrivmsg respondRaw = do
-  handlerPrivmsg' <- handlerPrivmsg
+onlySimple :: HandlerSimple -> HandlerRaw
+onlySimple handlerSimple respondRaw = do
+  handlerSimple' <- handlerSimple
   pure
     (\case
        I.Privmsg source target msg -> do
@@ -36,25 +35,30 @@ onlyPrivmsg' how handlerPrivmsg respondRaw = do
                if isChannelIdentifier target
                  then target
                  else I.userNick source
-         handlerPrivmsg'
-           (\response ->
-              forM_
-                (filter (not . null . T.strip) . T.split (== '\n') $ response)
-                (respondRaw . how (I.idText replyTo)))
+         handlerSimple'
+           (\response' ->
+              let (how, response) =
+                    case response' of
+                      Privmsg t -> (I.ircPrivmsg, t)
+                      Notice t -> (I.ircNotice, t)
+               in forM_
+                    (filter (not . null . T.strip) . T.split (== '\n') $
+                     response)
+                    (respondRaw . how (I.idText replyTo)))
            source
            msg
        _ -> pure ())
 
 withHelp :: Text -> HandlerRaw -> HandlerRaw
-withHelp txt handlerOrig = merge handlerHelp handlerOrig
+withHelp txt = merge handlerHelp
   where
     handlerHelp :: HandlerRaw
     handlerHelp =
-      onlyPrivmsg $
+      onlySimple $
       pure
         (\respond _ ->
            \case
-             "@help" -> respond ("• " ++ txt)
+             "@help" -> respond . Notice $ "• " ++ txt
              _ -> pure ())
     merge :: HandlerRaw -> HandlerRaw -> HandlerRaw
     merge a b respond = do

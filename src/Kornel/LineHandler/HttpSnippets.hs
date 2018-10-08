@@ -1,5 +1,6 @@
 module Kornel.LineHandler.HttpSnippets
   ( setup
+  , snippets
   ) where
 
 import qualified Data.ByteString.Lazy    as LBS
@@ -14,10 +15,12 @@ import           Text.Regex.PCRE
 
 setup :: Config -> HandlerRaw
 setup cfg =
-  withHelp cmdHelp . onlyPrivmsgRespondWithNotice . pure $ \respond _ request ->
+  withHelp cmdHelp . onlySimple . pure $ \respond _ request ->
     case findURLs request of
       [] -> pure ()
-      urls -> asyncWithLog "HttpSnippets" $ snippets cfg urls >>= mapM_ respond
+      urls ->
+        asyncWithLog "HttpSnippets" $
+        snippets cfg urls >>= mapM_ (respond . Notice)
 
 cmdHelp :: Text
 cmdHelp = "Snippets of posted URLs will be announced."

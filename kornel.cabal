@@ -68,6 +68,7 @@ library
                      , monad-loops
                      , transformers
                      , network
+                     , uri-encode
                      , optparse-applicative
                      , dhall
                      , profunctors

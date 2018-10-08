@@ -71,7 +71,7 @@ allHandlers :: Config -> [HandlerRaw]
 allHandlers cfg =
   [ handlePing
   , Kornel.LineHandler.Slap.setup
-  , Kornel.LineHandler.Google.setup
+  , Kornel.LineHandler.Google.setup cfg
   , Kornel.LineHandler.Clojure.setup
   , Kornel.LineHandler.Scala.setup cfg
   , Kornel.LineHandler.Haskell.setup cfg

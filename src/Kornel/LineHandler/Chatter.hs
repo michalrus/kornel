@@ -22,7 +22,7 @@ newtype HState =
 
 setup :: Config -> HandlerRaw
 setup cfg =
-  withHelp cmdHelp . onlyPrivmsg $ do
+  withHelp cmdHelp . onlySimple $ do
     state <- newTVarIO (HState Nothing)
     pure $ \respond origin request ->
       let isToMe = toUpper myNick `isInfixOf` toUpper request
@@ -36,7 +36,7 @@ setup cfg =
                   fromMaybe request $
                   parseMaybe (stripHighlight $ nick cfg) request
             answer <- chatter cfg state question
-            respond (highlight answer)
+            respond . Privmsg . highlight $ answer
 
 cmdHelp :: Text
 cmdHelp = "(You can also just talk to me.)"

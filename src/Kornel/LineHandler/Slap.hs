@@ -11,11 +11,11 @@ import           Prelude              hiding (Handler, handle)
 
 setup :: HandlerRaw
 setup =
-  withHelp cmdHelp . onlyPrivmsg . pure $ \respond _ request -> do
+  withHelp cmdHelp . onlySimple . pure $ \respond _ request -> do
     let nicks = parseMaybe cmdParser request
     let renderedReasons = reasons <$> nicks
     reason <- join <$> randomElem `traverse` renderedReasons
-    mapM_ respond reason
+    mapM_ (respond . Privmsg) reason
 
 cmdParser :: Parser [Text]
 cmdParser = skipSpace *> asciiCI "@slap" *> many1 nick
