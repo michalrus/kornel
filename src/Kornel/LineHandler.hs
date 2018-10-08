@@ -5,6 +5,7 @@ module Kornel.LineHandler
   , onlyPrivmsgRespondWithNotice
   ) where
 
+import qualified Data.Text      as T
 import qualified Irc.Commands   as I
 import qualified Irc.Identifier as I
 import qualified Irc.Message    as I
@@ -34,5 +35,11 @@ onlyPrivmsg' how handlerPrivmsg respondRaw = do
                if isChannelIdentifier target
                  then target
                  else I.userNick source
-         handlerPrivmsg' (respondRaw . how (I.idText replyTo)) source msg
+         handlerPrivmsg'
+           (\response ->
+              forM_
+                (filter (not . null . T.strip) . T.split (== '\n') $ response)
+                (respondRaw . how (I.idText replyTo)))
+           source
+           msg
        _ -> pure ())
