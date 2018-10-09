@@ -7,7 +7,7 @@ import qualified Data.Attoparsec.Text            as P
 import           Kornel.Common
 import           Kornel.Config
 import           Kornel.LineHandler
-import           Kornel.LineHandler.HttpSnippets (snippets)
+import           Kornel.LineHandler.HttpSnippets (announceUrl)
 import qualified Network.HTTP.Client.TLS         as HTTPS
 import           Network.HTTP.Simple
 import qualified Network.URI.Encode              as URI
@@ -25,8 +25,7 @@ setup cfg =
         mapM_
           (\url -> do
              respond (Privmsg url)
-             asyncWithLog "Google.snippet" $
-               snippets cfg [url] >>= mapM_ (respond . Notice))
+             announceUrl cfg respond url)
 
 cmdParser :: P.Parser Text
 cmdParser =

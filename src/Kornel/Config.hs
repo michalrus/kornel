@@ -19,6 +19,7 @@ data Config = Config
   , saslPassword :: Maybe Text
   , nickservPassword :: Maybe Text
   , cleverBotApiKey :: Maybe Text
+  , smmryApiKey :: Maybe Text
   , haskellBotNicks :: [I.Identifier]
   , scalaBotNicks :: [I.Identifier]
   , httpSnippetsFetchMax :: Integer
@@ -43,6 +44,7 @@ readConfig = do
          { saslPassword = map T.strip . saslPassword $ c
          , nickservPassword = map T.strip . nickservPassword $ c
          , cleverBotApiKey = map T.strip . cleverBotApiKey $ c
+         , smmryApiKey = map T.strip . smmryApiKey $ c
          })
 
 newtype CLI = CLI

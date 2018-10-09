@@ -2,7 +2,7 @@ module Kornel.LineHandler.Chatter
   ( setup
   ) where
 
-import           Data.Aeson
+import           Data.Aeson              (FromJSON)
 import           Data.Attoparsec.Text    as P
 import           Data.Coerce
 import qualified Irc.Identifier          as I
@@ -51,7 +51,7 @@ stripHighlight myNick =
 data CleverbotResponse = CleverbotResponse
   { cs :: Text
   , clever_output :: Text
-  } deriving (Show, Generic)
+  } deriving (Eq, Generic, Show)
 
 instance FromJSON CleverbotResponse
 

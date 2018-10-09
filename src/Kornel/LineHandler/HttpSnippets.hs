@@ -1,8 +1,9 @@
 module Kornel.LineHandler.HttpSnippets
   ( setup
-  , snippets
+  , announceUrl
   ) where
 
+import           Data.Aeson              (FromJSON)
 import qualified Data.ByteString.Lazy    as LBS
 import qualified Data.Text               as T
 import           Kornel.Common
@@ -10,38 +11,56 @@ import           Kornel.Config
 import           Kornel.LineHandler
 import           Network.HTTP.Client
 import qualified Network.HTTP.Client.TLS as HTTPS
+import           Network.HTTP.Simple     hiding (withResponse)
 import           Prelude                 hiding (Handler, handle)
 import           Text.Regex.PCRE
 
 setup :: Config -> HandlerRaw
 setup cfg =
   withHelp cmdHelp . onlySimple . pure $ \respond _ request ->
-    case findURLs request of
-      [] -> pure ()
-      urls ->
-        asyncWithLog "HttpSnippets" $
-        snippets cfg urls >>= mapM_ (respond . Notice)
+    forM_ (findURLs request) (announceUrl cfg respond)
+
+announceUrl :: Config -> (SimpleReply -> IO ()) -> Text -> IO ()
+announceUrl cfg respond url =
+  asyncWithLog "HttpSnippets.title" $ do
+    title cfg url >>= mapM_ (respond . Notice)
+    asyncWithLog "HttpSnippets.smmry" $
+      smmry cfg url >>= mapM_ (respond . Notice)
 
 cmdHelp :: Text
 cmdHelp = "Snippets of posted URLs will be announced."
 
-snippets :: Config -> [Text] -> IO (Maybe Text)
-snippets cfg urls = do
-  snips <- catMaybes <$> getSnippet (httpSnippetsFetchMax cfg) `traverse` urls
-  return $
-    case snips of
-      [] -> Nothing
-      xs -> Just $ T.intercalate "\n" xs
+smmry :: Config -> Text -> IO (Maybe Text)
+smmry Config {smmryApiKey} url =
+  forM smmryApiKey $ \apiKey -> do
+    manager <- HTTPS.newTlsManager
+    let request =
+          setRequestManager manager .
+          setupUserAgent .
+          setRequestQueryString
+            [ ("SM_API_KEY", Just $ encodeUtf8 apiKey)
+            , ("SM_LENGTH", Just "1")
+            , ("SM_URL", Just $ encodeUtf8 url)
+            ] $
+          "https://api.smmry.com/"
+    SmmryResponse {sm_api_content} <- getResponseBody <$> httpJSON request
+    pure (T.strip sm_api_content)
 
-getSnippet :: Integer -> Text -> IO (Maybe Text)
-getSnippet atMost url = do
+newtype SmmryResponse = SmmryResponse
+  { sm_api_content :: Text
+  } deriving (Eq, Generic, Show)
+
+instance FromJSON SmmryResponse
+
+title :: Config -> Text -> IO (Maybe Text)
+title Config {httpSnippetsFetchMax} url = do
   manager <- HTTPS.newTlsManager
   request <- setupUserAgent <$> parseRequest (unpack url)
   response <-
     withResponse request manager $ \r ->
-      brReadSome (responseBody r) (fromIntegral atMost)
-  let title = findTitle $ LBS.toStrict response
-  return $ T.strip . decodeHtmlEntities . decodeUtf8_ <$> title
+      brReadSome (responseBody r) (fromIntegral httpSnippetsFetchMax)
+  let title' = findTitle $ LBS.toStrict response
+  return $ T.strip . decodeHtmlEntities . decodeUtf8_ <$> title'
 
 findTitle :: ByteString -> Maybe ByteString
 findTitle haystack = headMay $ drop 1 matches
