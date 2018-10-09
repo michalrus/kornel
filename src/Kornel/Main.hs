@@ -71,6 +71,7 @@ allHandlers :: Config -> [HandlerRaw]
 allHandlers cfg =
   [ handlePing
   , Kornel.LineHandler.Slap.setup
+  , handleBots
   , Kornel.LineHandler.Google.setup cfg
   , Kornel.LineHandler.Clojure.setup
   , Kornel.LineHandler.Scala.setup cfg
@@ -193,3 +194,12 @@ handlePing sendMsg =
   pure $ \case
     I.Ping ts -> sendMsg $ I.ircPong ts
     _ -> pure ()
+
+handleBots :: HandlerRaw
+handleBots =
+  withHelp "@bots" . onlySimple $
+  pure
+    (\respond _ ->
+       \case
+         "@bots" -> respond . Privmsg $ ":)"
+         _ -> pure ())
