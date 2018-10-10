@@ -32,7 +32,7 @@ cmdHelp = "Snippets of posted URLs will be announced."
 
 smmry :: Config -> Text -> IO (Maybe Text)
 smmry Config {smmryApiKey} url =
-  forM smmryApiKey $ \apiKey -> do
+  map join . forM smmryApiKey $ \apiKey -> do
     manager <- HTTPS.newTlsManager
     let request =
           setRequestManager manager .
@@ -44,10 +44,10 @@ smmry Config {smmryApiKey} url =
             ] $
           "https://api.smmry.com/"
     SmmryResponse {sm_api_content} <- getResponseBody <$> httpJSON request
-    pure (T.strip sm_api_content)
+    pure . map T.strip $ sm_api_content
 
 newtype SmmryResponse = SmmryResponse
-  { sm_api_content :: Text
+  { sm_api_content :: Maybe Text
   } deriving (Eq, Generic, Show)
 
 instance FromJSON SmmryResponse
