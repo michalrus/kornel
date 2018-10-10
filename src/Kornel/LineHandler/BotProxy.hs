@@ -26,7 +26,7 @@ setup botNicks commandParser sendMsg = do
   state <- newTVarIO $ HState Nothing Nothing Nothing
   pure $ \case
     I.Privmsg origin target msg
-      | elem (I.userNick origin) botNicks -> do
+      | elem (I.userNick origin) botNicks && not (isChannelIdentifier target) -> do
         replyTo <- lastReplyTo <$> readTVarIO state
         forM_ replyTo $ \to -> sendMsg $ I.ircPrivmsg (I.idText to) msg
       | otherwise ->
