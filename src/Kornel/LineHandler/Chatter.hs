@@ -10,6 +10,7 @@ import qualified Irc.UserInfo            as I
 import           Kornel.Common
 import           Kornel.Config
 import           Kornel.LineHandler
+import qualified Kornel.Log              as L
 import qualified Network.HTTP.Client.TLS as HTTPS
 import           Network.HTTP.Simple
 import           Prelude                 hiding (Handler, handle)
@@ -56,17 +57,27 @@ data CleverbotResponse = CleverbotResponse
 instance FromJSON CleverbotResponse
 
 chatter :: Config -> TVar HState -> Text -> IO Text
-chatter Config {cleverBotApiKey} state msg = do
-  state' <- readTVarIO state
-  manager <- HTTPS.newTlsManager
-  let request =
-        setRequestManager manager .
-        setRequestQueryString
-          [ ("key", encodeUtf8 <$> cleverBotApiKey)
-          , ("cs", encodeUtf8 <$> coerce state')
-          , ("input", Just $ encodeUtf8 msg)
-          ] $
-        "https://www.cleverbot.com/getreply"
-  response <- getResponseBody <$> httpJSON request
-  atomically . writeTVar state . HState . Just . cs $ response
-  pure . clever_output $ response
+chatter Config {cleverBotApiKey} state msg =
+  catchAny
+    go
+    (\ex -> do
+       L.log $ "[WARNING] Kornel.Chatter: error (resetting state): " ++ tshow ex
+       -- Couteract the weird API error when after a longer time it
+       -- returns responses with invalid Unicode in `conversation_id`.
+       atomically . writeTVar state . HState $ Nothing
+       go)
+  where
+    go = do
+      state' <- readTVarIO state
+      manager <- HTTPS.newTlsManager
+      let request =
+            setRequestManager manager .
+            setRequestQueryString
+              [ ("key", encodeUtf8 <$> cleverBotApiKey)
+              , ("cs", encodeUtf8 <$> coerce state')
+              , ("input", Just $ encodeUtf8 msg)
+              ] $
+            "https://www.cleverbot.com/getreply"
+      response <- getResponseBody <$> httpJSON request
+      atomically . writeTVar state . HState . Just . cs $ response
+      pure . clever_output $ response
