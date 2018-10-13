@@ -48,12 +48,14 @@ library
                      , Kornel.LineHandler.Google
                      , Kornel.LineHandler.Haskell
                      , Kornel.LineHandler.HttpSnippets
+                     , Kornel.LineHandler.Money
                      , Kornel.LineHandler.Scala
                      , Kornel.LineHandler.Slap
                      , Kornel.Log
                      , Kornel.Main
   build-depends:       base-noprelude
                      , prelude
+                     , containers
                      , aeson
                      , memory
                      , attoparsec

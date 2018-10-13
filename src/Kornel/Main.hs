@@ -19,6 +19,7 @@ import qualified Kornel.LineHandler.Clojure
 import qualified Kornel.LineHandler.Google
 import qualified Kornel.LineHandler.Haskell
 import qualified Kornel.LineHandler.HttpSnippets
+import qualified Kornel.LineHandler.Money
 import qualified Kornel.LineHandler.Scala
 import qualified Kornel.LineHandler.Slap
 import qualified Kornel.Log                      as L
@@ -76,6 +77,7 @@ allHandlers cfg =
   , Kornel.LineHandler.Clojure.setup
   , Kornel.LineHandler.Scala.setup cfg
   , Kornel.LineHandler.Haskell.setup cfg
+  , Kornel.LineHandler.Money.setup
   , Kornel.LineHandler.HttpSnippets.setup cfg
   , Kornel.LineHandler.Chatter.setup cfg
   ]
