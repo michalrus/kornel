@@ -46,7 +46,7 @@ stripHighlight :: I.Identifier -> Parser Text
 stripHighlight myNick =
   skipSpace *> asciiCI (I.idText myNick) *> skipSpace *>
   optional (char ':' <|> char ',') *>
-  skip isHorizontalSpace *>
+  skipSpace *>
   takeText
 
 data CleverbotResponse = CleverbotResponse

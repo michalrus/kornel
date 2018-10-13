@@ -28,8 +28,7 @@ setup cfg =
              announceUrl cfg respond url)
 
 cmdParser :: P.Parser Text
-cmdParser =
-  P.skipSpace *> P.asciiCI "@google" *> P.skip P.isHorizontalSpace *> P.takeText
+cmdParser = P.skipSpace *> P.asciiCI "@google" *> P.skipSpace *> P.takeText
 
 cmdHelp :: Text
 cmdHelp = "@google <query>"

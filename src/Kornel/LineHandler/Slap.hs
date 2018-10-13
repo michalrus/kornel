@@ -3,6 +3,7 @@ module Kornel.LineHandler.Slap
   ) where
 
 import           Data.Attoparsec.Text as P
+import           Data.Char            (isSpace)
 import qualified Data.List            as Unsafe
 import           Data.Text            as T
 import           Kornel.Common
@@ -20,10 +21,10 @@ setup =
 cmdParser :: Parser [Text]
 cmdParser = skipSpace *> asciiCI "@slap" *> many1 nick
   where
-    nick = skipSpace *> takeWhile1 (not . isHorizontalSpace)
+    nick = skipSpace *> takeWhile1 (not . isSpace)
 
 cmdHelp :: Text
-cmdHelp = "@slap <nick1>[ <nick2>[ …]]"
+cmdHelp = "@slap <nick1>[ <nick2> … ]"
 
 -- | Reasons taken from the wonderful lambdabot. ♥
 {-# ANN reasons ("HLint: ignore Redundant $" :: String) #-}

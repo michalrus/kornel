@@ -18,7 +18,7 @@ setup cfg =
     expr <- takeText
     return (command <> " " <> expr)
   where
-    spc = void . many1 $ skip isHorizontalSpace
+    spc = skipSpace
 
 cmdHelp :: Text
 cmdHelp = "@scala [ :type | :t ] <expr>"
