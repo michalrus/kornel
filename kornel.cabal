@@ -51,6 +51,7 @@ library
                      , Kornel.LineHandler.Money
                      , Kornel.LineHandler.Scala
                      , Kornel.LineHandler.Slap
+                     , Kornel.LineHandler.Wolfram
                      , Kornel.Log
                      , Kornel.Main
   build-depends:       base-noprelude

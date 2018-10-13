@@ -22,6 +22,7 @@ import qualified Kornel.LineHandler.HttpSnippets
 import qualified Kornel.LineHandler.Money
 import qualified Kornel.LineHandler.Scala
 import qualified Kornel.LineHandler.Slap
+import qualified Kornel.LineHandler.Wolfram
 import qualified Kornel.Log                      as L
 import qualified Network.Connection              as Net
 import           Prelude                         hiding (Handler)
@@ -74,6 +75,7 @@ allHandlers cfg =
   , Kornel.LineHandler.Slap.setup
   , handleBots
   , Kornel.LineHandler.Google.setup cfg
+  , Kornel.LineHandler.Wolfram.setup cfg
   , Kornel.LineHandler.Clojure.setup
   , Kornel.LineHandler.Scala.setup cfg
   , Kornel.LineHandler.Haskell.setup cfg
