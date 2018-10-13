@@ -8,9 +8,9 @@ import           Kornel.LineHandler
 import qualified Kornel.LineHandler.BotProxy as Proxy
 import           Prelude                     hiding (Handler, handle)
 
-setup :: Config -> HandlerRaw
+setup :: Config -> (Help, HandlerRaw)
 setup cfg =
-  withHelp cmdHelp . Proxy.setup (C.scalaBotNicks cfg) $ do
+  (cmdHelp, ) . Proxy.setup (C.scalaBotNicks cfg) $ do
     skipSpace
     asciiCI "@scala" *> spc
     command <-
@@ -20,5 +20,5 @@ setup cfg =
   where
     spc = skipSpace1
 
-cmdHelp :: Text
-cmdHelp = "@scala [ :type | :t ] <expr>"
+cmdHelp :: Help
+cmdHelp = Help [(["scala"], "[ :type | :t ] <expr>")]

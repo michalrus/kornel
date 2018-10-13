@@ -10,21 +10,23 @@ import           Kornel.Common
 import           Kornel.LineHandler
 import           Prelude              hiding (Handler, handle)
 
-setup :: HandlerRaw
+setup :: (Help, HandlerRaw)
 setup =
-  withHelp cmdHelp . onlySimple . pure $ \respond _ request -> do
+  (cmdHelp, ) . onlySimple . pure $ \respond _ request -> do
     let nicks = parseMaybe cmdParser request
     let renderedReasons = reasons <$> nicks
     reason <- join <$> randomElem `traverse` renderedReasons
     mapM_ (respond . Privmsg) reason
 
 cmdParser :: P.Parser [Text]
-cmdParser = P.skipSpace *> P.asciiCI "@slap" *> P.many1 nick
+cmdParser =
+  P.skipSpace *> P.asciiCI "@slap" *> P.many1 nick <* P.skipSpace <*
+  P.endOfInput
   where
     nick = skipSpace1 *> P.takeWhile1 (not . isSpace)
 
-cmdHelp :: Text
-cmdHelp = "@slap <nick1>[ <nick2> … ]"
+cmdHelp :: Help
+cmdHelp = Help [(["slap"], "<nick1>[ <nick2> … ]")]
 
 -- | Reasons taken from the wonderful lambdabot. ♥
 {-# ANN reasons ("HLint: ignore Redundant $" :: String) #-}

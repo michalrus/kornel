@@ -11,9 +11,9 @@ import qualified Network.HTTP.Client.TLS as HTTPS
 import           Network.HTTP.Simple
 import           Prelude                 hiding (Handler, handle)
 
-setup :: HandlerRaw
+setup :: (Help, HandlerRaw)
 setup =
-  withHelp cmdHelp . onlySimple . pure $ \respond _ request ->
+  (cmdHelp, ) . onlySimple . pure $ \respond _ request ->
     case parseMaybe cmdParser request of
       Nothing -> pure ()
       Just expr ->
@@ -26,13 +26,17 @@ cmdParser = do
   from <- symb
   skipSpace1 <* (P.asciiCI "to" <|> P.asciiCI "in")
   to <- P.many1 symb
+  P.skipSpace <* P.endOfInput
   pure (amount, from, to)
   where
     symb = toUpper <$> (skipSpace1 *> P.takeWhile1 (not . isSpace))
 
-cmdHelp :: Text
+cmdHelp :: Help
 cmdHelp =
-  "{ @money | @currency } <amount> <from-symb> { to | in } <to-symb1>[ <to-symb2> …]"
+  Help
+    [ ( ["money", "currency"]
+      , "<amount> <from-symb> { to | in } <to-symb1>[ <to-symb2> …]")
+    ]
 
 money :: (Double, Text, [Text]) -> IO (Maybe Text)
 money (amount, from, to) = do

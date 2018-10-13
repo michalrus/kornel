@@ -10,17 +10,17 @@ import qualified Network.HTTP.Client.TLS as HTTPS
 import           Network.HTTP.Simple
 import           Prelude                 hiding (Handler, handle)
 
-setup :: Config -> HandlerRaw
+setup :: Config -> (Help, HandlerRaw)
 setup cfg =
-  withHelp cmdHelp . onlySimple . pure $ \respond _ request ->
+  (cmdHelp, ) . onlySimple . pure $ \respond _ request ->
     forM_ (parseMaybe cmdParser request) $ \expr ->
       asyncWithLog "Wolfram" $ wolfram cfg expr >>= mapM_ (respond . Privmsg)
 
 cmdParser :: P.Parser Text
 cmdParser = P.skipSpace *> P.asciiCI "@wolfram" *> skipSpace1 *> P.takeText
 
-cmdHelp :: Text
-cmdHelp = "@wolfram <query>"
+cmdHelp :: Help
+cmdHelp = Help [(["wolfram"], "<query>")]
 
 wolfram :: Config -> Text -> IO (Maybe Text)
 wolfram Config {wolframApiKey} expr = do

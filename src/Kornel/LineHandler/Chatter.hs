@@ -21,9 +21,9 @@ newtype HState =
 {-# ANN CleverbotResponse ("HLint: ignore Use camelCase" :: String)
         #-}
 
-setup :: Config -> HandlerRaw
+setup :: Config -> (Help, HandlerRaw)
 setup cfg =
-  withHelp cmdHelp . onlySimple $ do
+  (cmdHelp, ) . onlySimple $ do
     state <- newTVarIO (HState Nothing)
     pure $ \respond origin request ->
       let isToMe = toUpper myNick `isInfixOf` toUpper request
@@ -39,8 +39,8 @@ setup cfg =
             answer <- chatter cfg state question
             respond . Privmsg . highlight $ answer
 
-cmdHelp :: Text
-cmdHelp = "(You can also just talk to me.)"
+cmdHelp :: Help
+cmdHelp = Help [([], "(You can also just talk to me.)")]
 
 stripHighlight :: I.Identifier -> P.Parser Text
 stripHighlight myNick =

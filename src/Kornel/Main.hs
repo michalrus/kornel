@@ -70,19 +70,23 @@ data EventQueue
 
 -- |The order here constitutes the order in `@help`.
 allHandlers :: Config -> [HandlerRaw]
-allHandlers cfg =
-  [ handlePing
-  , Kornel.LineHandler.Slap.setup
-  , handleBots
-  , Kornel.LineHandler.Google.setup cfg
-  , Kornel.LineHandler.Wolfram.setup cfg
-  , Kornel.LineHandler.Clojure.setup
-  , Kornel.LineHandler.Scala.setup cfg
-  , Kornel.LineHandler.Haskell.setup cfg
-  , Kornel.LineHandler.Money.setup
-  , Kornel.LineHandler.HttpSnippets.setup cfg
-  , Kornel.LineHandler.Chatter.setup cfg
-  ]
+allHandlers cfg = snd <$> input
+  where
+    input :: [(Help, HandlerRaw)]
+    input =
+      [ handlePing
+      , Kornel.LineHandler.Slap.setup
+      , handleBots
+      , Kornel.LineHandler.Google.setup cfg
+      , Kornel.LineHandler.Wolfram.setup cfg
+      , Kornel.LineHandler.Clojure.setup
+      , Kornel.LineHandler.Scala.setup cfg
+      , Kornel.LineHandler.Haskell.setup cfg
+      , Kornel.LineHandler.Money.setup
+      , Kornel.LineHandler.HttpSnippets.setup cfg
+      , Kornel.LineHandler.Chatter.setup cfg
+      , helpHandler (fst <$> input)
+      ]
 
 eventLoop ::
      Config
@@ -193,15 +197,17 @@ login cfg ctx = do
   return
     (con, saslPrefixCmd ++ helloCmd ++ saslAuthCmd ++ nickservCmd ++ joinCmd)
 
-handlePing :: HandlerRaw
-handlePing sendMsg =
-  pure $ \case
-    I.Ping ts -> sendMsg $ I.ircPong ts
-    _ -> pure ()
+handlePing :: (Help, HandlerRaw)
+handlePing =
+  ( Help []
+  , \sendMsg ->
+      pure $ \case
+        I.Ping ts -> sendMsg $ I.ircPong ts
+        _ -> pure ())
 
-handleBots :: HandlerRaw
+handleBots :: (Help, HandlerRaw)
 handleBots =
-  withHelp "@bots" . onlySimple $
+  (Help [(["bots"], "")], ) . onlySimple $
   pure
     (\respond _ ->
        \case

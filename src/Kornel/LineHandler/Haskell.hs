@@ -8,9 +8,9 @@ import           Kornel.LineHandler
 import qualified Kornel.LineHandler.BotProxy as Proxy
 import           Prelude                     hiding (Handler, handle)
 
-setup :: Config -> HandlerRaw
+setup :: Config -> (Help, HandlerRaw)
 setup cfg =
-  withHelp cmdHelp . Proxy.setup (C.haskellBotNicks cfg) $ do
+  (cmdHelp, ) . Proxy.setup (C.haskellBotNicks cfg) $ do
     skipSpace
     (asciiCI "@haskell" <|> asciiCI "@hs") *> spc
     command <-
@@ -32,6 +32,9 @@ setup cfg =
   where
     spc = skipSpace1
 
-cmdHelp :: Text
+cmdHelp :: Help
 cmdHelp =
-  "{ @haskell | @hs } [ :type | :t | :kind | :k | :pl | :pointful | :free | :instances | :hoogle | :index | :djinn | :undo | :unmtl | :source | :src | :s ] <expr>"
+  Help
+    [ ( ["haskell", "hs"]
+      , "[ :type | :t | :kind | :k | :pl | :pointful | :free | :instances | :hoogle | :index | :djinn | :undo | :unmtl | :source | :src | :s ] <expr>")
+    ]

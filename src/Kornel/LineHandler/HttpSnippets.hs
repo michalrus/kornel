@@ -15,9 +15,9 @@ import           Network.HTTP.Simple     hiding (withResponse)
 import           Prelude                 hiding (Handler, handle)
 import           Text.Regex.PCRE
 
-setup :: Config -> HandlerRaw
+setup :: Config -> (Help, HandlerRaw)
 setup cfg =
-  withHelp cmdHelp . onlySimple . pure $ \respond _ request ->
+  (cmdHelp, ) . onlySimple . pure $ \respond _ request ->
     forM_ (findURLs request) (announceUrl cfg respond)
 
 announceUrl :: Config -> (SimpleReply -> IO ()) -> Text -> IO ()
@@ -27,8 +27,8 @@ announceUrl cfg respond url =
     asyncWithLog "HttpSnippets.smmry" $
       smmry cfg url >>= mapM_ (respond . Notice)
 
-cmdHelp :: Text
-cmdHelp = "Snippets of posted URLs will be announced."
+cmdHelp :: Help
+cmdHelp = Help [([], "Snippets of posted URLs will be announced.")]
 
 smmry :: Config -> Text -> IO (Maybe Text)
 smmry Config {smmryApiKey} url =

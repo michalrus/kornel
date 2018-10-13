@@ -14,9 +14,9 @@ import qualified Network.URI.Encode              as URI
 import           Prelude                         hiding (Handler, handle)
 import           Text.Regex.PCRE
 
-setup :: Config -> HandlerRaw
+setup :: Config -> (Help, HandlerRaw)
 setup cfg =
-  withHelp cmdHelp . onlySimple . pure $ \respond _ request ->
+  (cmdHelp, ) . onlySimple . pure $ \respond _ request ->
     case parseMaybe cmdParser request of
       Nothing -> pure ()
       Just query ->
@@ -30,8 +30,8 @@ setup cfg =
 cmdParser :: P.Parser Text
 cmdParser = P.skipSpace *> P.asciiCI "@google" *> skipSpace1 *> P.takeText
 
-cmdHelp :: Text
-cmdHelp = "@google <query>"
+cmdHelp :: Help
+cmdHelp = Help [(["google"], "<query>")]
 
 google :: Text -> IO [Text]
 google query = do

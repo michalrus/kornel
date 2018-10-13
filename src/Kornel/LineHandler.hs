@@ -3,11 +3,14 @@ module Kornel.LineHandler
   , HandlerSimple
   , onlySimple
   , SimpleReply(..)
-  , withHelp
+  , Help(..)
+  , helpHandler
   , skipSpace1
   ) where
 
 import qualified Data.Attoparsec.Text as P
+import           Data.Char            (isSpace)
+import qualified Data.Map             as Map
 import qualified Data.Text            as T
 import qualified Irc.Commands         as I
 import qualified Irc.Identifier       as I
@@ -26,6 +29,9 @@ data SimpleReply
   = Privmsg Text
   | Notice Text
   deriving (Eq, Show)
+
+newtype Help =
+  Help (Map [Text] Text)
 
 onlySimple :: HandlerSimple -> HandlerRaw
 onlySimple handlerSimple respondRaw = do
@@ -54,19 +60,37 @@ onlySimple handlerSimple respondRaw = do
 skipSpace1 :: P.Parser ()
 skipSpace1 = P.space *> P.skipSpace
 
-withHelp :: Text -> HandlerRaw -> HandlerRaw
-withHelp txt = merge handlerHelp
+helpHandler :: [Help] -> (Help, HandlerRaw)
+helpHandler helps =
+  (cmdHelp, ) . onlySimple . pure $ \respond _ msg ->
+    forM_ (parseMaybe cmdParser msg) $ \case
+      [] -> respond . Notice $ allCommands
+      cmds ->
+        forM_ cmds $ \cmd -> forM_ (lookup cmd singleCommand) (respond . Notice)
   where
-    handlerHelp :: HandlerRaw
-    handlerHelp =
-      onlySimple $
-      pure
-        (\respond _ ->
-           \case
-             "@help" -> respond . Notice $ "• " ++ txt
-             _ -> pure ())
-    merge :: HandlerRaw -> HandlerRaw -> HandlerRaw
-    merge a b respond = do
-      a' <- a respond
-      b' <- b respond
-      pure (\msg -> a' msg >> b' msg)
+    cmdHelp = Help [(["help"], "<cmd>")]
+    cmdParser :: P.Parser [Text]
+    cmdParser =
+      P.skipSpace *> "@help" *>
+      many (skipSpace1 *> optional (P.char '@') *> P.takeWhile1 (not . isSpace)) <*
+      P.skipSpace <*
+      P.endOfInput
+    allCommands :: Text
+    allCommands =
+      let explicite :: [Text] = do
+            Help help <- helps
+            (cmds, _) <- Map.toList help
+            cmds
+          implicite :: [Text] = do
+            Help help <- helps
+            (cmds, hlp) <- Map.toList help
+            [hlp | null cmds]
+       in intercalate " • " $
+          (sort . map ("@" ++) $ explicite) ++ sort implicite
+    singleCommand :: Map Text Text
+    singleCommand =
+      Map.fromList $ do
+        Help help <- helps
+        (cmds, hlp) <- Map.toList help
+        cmd <- cmds
+        pure (cmd, "@" ++ cmd ++ " " ++ hlp)

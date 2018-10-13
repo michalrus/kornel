@@ -10,9 +10,9 @@ import qualified Network.HTTP.Client.TLS as HTTPS
 import           Network.HTTP.Simple
 import           Prelude                 hiding (Handler, handle)
 
-setup :: HandlerRaw
+setup :: (Help, HandlerRaw)
 setup =
-  withHelp cmdHelp . onlySimple . pure $ \respond _ request ->
+  (cmdHelp, ) . onlySimple . pure $ \respond _ request ->
     case parseMaybe cmdParser request of
       Nothing -> pure ()
       Just sexpr ->
@@ -23,8 +23,8 @@ cmdParser =
   P.skipSpace *> (P.asciiCI "@clojure" <|> P.asciiCI "@clj") *> skipSpace1 *>
   P.takeText
 
-cmdHelp :: Text
-cmdHelp = "{ @clojure | @clj } <sexpr>"
+cmdHelp :: Help
+cmdHelp = Help [(["clojure", "clj"], "<sexpr>")]
 
 data TryCljResponse = TryCljResponse
   { result :: Maybe Text
