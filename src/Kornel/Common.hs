@@ -1,6 +1,6 @@
 module Kornel.Common where
 
-import           Data.Attoparsec.Text   as P
+import qualified Data.Attoparsec.Text   as P
 import           Data.ByteString        (ByteString)
 import qualified Data.List              as Unsafe
 import           Data.Text.Encoding     (decodeUtf8With)
@@ -24,18 +24,15 @@ randomElem xs = Just . (Unsafe.!!) xs <$> randomRIO (0, length xs - 1)
 meAction :: Text -> Text
 meAction act = "\001ACTION " <> act <> "\001"
 
-parseMaybe :: Parser a -> Text -> Maybe a
-parseMaybe p = eitherToMaybe . parseOnly p
+parseMaybe :: P.Parser a -> Text -> Maybe a
+parseMaybe p t =
+  case P.parseOnly p t of
+    Left _ -> Nothing
+    Right b -> Just b
 
 isChannelIdentifier :: I.Identifier -> Bool
 isChannelIdentifier ident =
   any @[_] (`isPrefixOf` I.idText ident) ["#", "!", "&"]
-
-eitherToMaybe :: Either a b -> Maybe b
-eitherToMaybe =
-  \case
-    Left _ -> Nothing
-    Right b -> Just b
 
 setupUserAgent :: Request -> Request
 setupUserAgent r =

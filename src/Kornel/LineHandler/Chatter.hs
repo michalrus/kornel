@@ -3,7 +3,7 @@ module Kornel.LineHandler.Chatter
   ) where
 
 import           Data.Aeson              (FromJSON)
-import           Data.Attoparsec.Text    as P
+import qualified Data.Attoparsec.Text    as P
 import           Data.Coerce
 import qualified Irc.Identifier          as I
 import qualified Irc.UserInfo            as I
@@ -42,12 +42,12 @@ setup cfg =
 cmdHelp :: Text
 cmdHelp = "(You can also just talk to me.)"
 
-stripHighlight :: I.Identifier -> Parser Text
+stripHighlight :: I.Identifier -> P.Parser Text
 stripHighlight myNick =
-  skipSpace *> asciiCI (I.idText myNick) *> skipSpace *>
-  optional (char ':' <|> char ',') *>
-  skipSpace *>
-  takeText
+  P.skipSpace *> P.asciiCI (I.idText myNick) *> P.skipSpace *>
+  optional (P.char ':' <|> P.char ',' <|> P.space) *>
+  P.skipSpace *>
+  P.takeText
 
 data CleverbotResponse = CleverbotResponse
   { cs :: Text

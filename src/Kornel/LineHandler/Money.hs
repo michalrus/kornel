@@ -22,13 +22,13 @@ setup =
 cmdParser :: P.Parser (Double, Text, [Text])
 cmdParser = do
   P.skipSpace <* (P.asciiCI "@money" <|> P.asciiCI "@currency")
-  amount <- P.skipSpace *> P.double
+  amount <- skipSpace1 *> P.double
   from <- symb
-  P.skipSpace <* (P.asciiCI "to" <|> P.asciiCI "in")
+  skipSpace1 <* (P.asciiCI "to" <|> P.asciiCI "in")
   to <- P.many1 symb
   pure (amount, from, to)
   where
-    symb = toUpper <$> (P.skipSpace *> P.takeWhile1 (not . isSpace))
+    symb = toUpper <$> (skipSpace1 *> P.takeWhile1 (not . isSpace))
 
 cmdHelp :: Text
 cmdHelp =

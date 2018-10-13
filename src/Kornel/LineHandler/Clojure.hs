@@ -20,7 +20,7 @@ setup =
 
 cmdParser :: P.Parser Text
 cmdParser =
-  P.skipSpace *> (P.asciiCI "@clojure" <|> P.asciiCI "@clj") *> P.skipSpace *>
+  P.skipSpace *> (P.asciiCI "@clojure" <|> P.asciiCI "@clj") *> skipSpace1 *>
   P.takeText
 
 cmdHelp :: Text

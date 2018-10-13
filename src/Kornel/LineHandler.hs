@@ -4,14 +4,16 @@ module Kornel.LineHandler
   , onlySimple
   , SimpleReply(..)
   , withHelp
+  , skipSpace1
   ) where
 
-import qualified Data.Text      as T
-import qualified Irc.Commands   as I
-import qualified Irc.Identifier as I
-import qualified Irc.Message    as I
-import qualified Irc.RawIrcMsg  as I
-import qualified Irc.UserInfo   as I
+import qualified Data.Attoparsec.Text as P
+import qualified Data.Text            as T
+import qualified Irc.Commands         as I
+import qualified Irc.Identifier       as I
+import qualified Irc.Message          as I
+import qualified Irc.RawIrcMsg        as I
+import qualified Irc.UserInfo         as I
 import           Kornel.Common
 
 type HandlerRaw = (I.RawIrcMsg -> IO ()) -> IO (I.IrcMsg -> IO ())
@@ -48,6 +50,9 @@ onlySimple handlerSimple respondRaw = do
            source
            msg
        _ -> pure ())
+
+skipSpace1 :: P.Parser ()
+skipSpace1 = P.space *> P.skipSpace
 
 withHelp :: Text -> HandlerRaw -> HandlerRaw
 withHelp txt = merge handlerHelp

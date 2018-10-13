@@ -17,7 +17,7 @@ setup cfg =
       asyncWithLog "Wolfram" $ wolfram cfg expr >>= mapM_ (respond . Privmsg)
 
 cmdParser :: P.Parser Text
-cmdParser = P.skipSpace *> P.asciiCI "@wolfram" *> P.skipSpace *> P.takeText
+cmdParser = P.skipSpace *> P.asciiCI "@wolfram" *> skipSpace1 *> P.takeText
 
 cmdHelp :: Text
 cmdHelp = "@wolfram <query>"

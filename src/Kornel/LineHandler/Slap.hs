@@ -2,7 +2,7 @@ module Kornel.LineHandler.Slap
   ( setup
   ) where
 
-import           Data.Attoparsec.Text as P
+import qualified Data.Attoparsec.Text as P
 import           Data.Char            (isSpace)
 import qualified Data.List            as Unsafe
 import           Data.Text            as T
@@ -18,10 +18,10 @@ setup =
     reason <- join <$> randomElem `traverse` renderedReasons
     mapM_ (respond . Privmsg) reason
 
-cmdParser :: Parser [Text]
-cmdParser = skipSpace *> asciiCI "@slap" *> many1 nick
+cmdParser :: P.Parser [Text]
+cmdParser = P.skipSpace *> P.asciiCI "@slap" *> P.many1 nick
   where
-    nick = skipSpace *> takeWhile1 (not . isSpace)
+    nick = skipSpace1 *> P.takeWhile1 (not . isSpace)
 
 cmdHelp :: Text
 cmdHelp = "@slap <nick1>[ <nick2> … ]"

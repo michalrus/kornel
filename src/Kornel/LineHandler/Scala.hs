@@ -2,7 +2,7 @@ module Kornel.LineHandler.Scala
   ( setup
   ) where
 
-import           Data.Attoparsec.Text        as P
+import           Data.Attoparsec.Text
 import           Kornel.Config               as C
 import           Kornel.LineHandler
 import qualified Kornel.LineHandler.BotProxy as Proxy
@@ -18,7 +18,7 @@ setup cfg =
     expr <- takeText
     return (command <> " " <> expr)
   where
-    spc = skipSpace
+    spc = skipSpace1
 
 cmdHelp :: Text
 cmdHelp = "@scala [ :type | :t ] <expr>"

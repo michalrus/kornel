@@ -5,7 +5,7 @@ module Kornel.LineHandler.BotProxy
 
 import           Control.Monad        hiding (forM_)
 import           Control.Monad.Zip
-import           Data.Attoparsec.Text as P
+import qualified Data.Attoparsec.Text as P
 import qualified Irc.Codes            as I
 import qualified Irc.Commands         as I
 import qualified Irc.Identifier       as I
@@ -21,7 +21,7 @@ data HState = HState
   , lastBotInquiry :: Maybe Text
   } deriving (Show)
 
-setup :: [I.Identifier] -> Parser Text -> HandlerRaw
+setup :: [I.Identifier] -> P.Parser Text -> HandlerRaw
 setup botNicks commandParser sendMsg = do
   state <- newTVarIO $ HState Nothing Nothing Nothing
   pure $ \case
